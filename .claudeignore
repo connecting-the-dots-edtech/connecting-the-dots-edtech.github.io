@@ -1,0 +1,19 @@
+# Dependencies and build output
+node_modules
+dist
+dist-ssr
+
+# Lockfile (large, rarely useful as context)
+package-lock.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+
+# Local Claude Code settings
+.claude/settings.local.json

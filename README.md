@@ -1,4 +1,4 @@
-# Sirat·ul·Zaman — Islamic History Timeline
+# Connecting the Dots — Islamic History Timeline
 
 An interactive documentary-style timeline of Islamic history, from Creation
 through the Caliphates, built with React, TypeScript, Vite, and Tailwind CSS.

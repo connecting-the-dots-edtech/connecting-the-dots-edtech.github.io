@@ -10,7 +10,7 @@ export function Header({ onOpenSearch }: HeaderProps) {
           <span className="h-2.5 w-2.5 bg-gold" />
         </span>
         <span className="font-serif text-[19px] tracking-[0.06em] text-cream-text">
-          Sirat<span className="text-gold">·</span>ul<span className="text-gold">·</span>Zaman
+          Connecting the <span className="text-gold">Dots</span>
         </span>
       </a>
       <nav className="flex items-center gap-5 sm:gap-7">

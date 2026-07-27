@@ -5,7 +5,7 @@ export function Footer() {
         وَاللَّٰهُ أَعْلَمُ
       </div>
       <div className="text-xs tracking-widest text-ghost">
-        Sirat·ul·Zaman — an interactive documentary of Islamic history · Content language: বাংলা
+        Connecting the Dots — an interactive documentary of Islamic history · Content language: বাংলা
       </div>
     </footer>
   );

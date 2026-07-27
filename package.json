@@ -1,8 +1,15 @@
 {
   "name": "connecting-the-dots-edtech.github.io",
+  "description": "Connecting the Dots — an interactive documentary timeline of Islamic history, from Creation to the Caliphates.",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/connecting-the-dots-edtech/connecting-the-dots-edtech.github.io.git"
+  },
+  "homepage": "https://connecting-the-dots-edtech.github.io/",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
