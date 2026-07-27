@@ -1,0 +1,50 @@
+export interface Era {
+  id: string;
+  bn: string;
+  en: string;
+  short: string;
+  span: string;
+  tint: string;
+  accent: string;
+  glyph: string;
+  /** relative width at zoom level 1 (px) */
+  baseW: number;
+}
+
+export interface TimelineEvent {
+  id: number;
+  era: string;
+  year: string;
+  title: string;
+  titleEn: string;
+  /** whether the card renders above the axis (alternating layout) */
+  up: boolean;
+  thumb: string;
+  body: string;
+  /** Qur'anic verse directly tied to this event, where one genuinely applies */
+  arabic?: string;
+}
+
+export interface LineageBranch {
+  bn: string;
+  en: string;
+  note: string;
+}
+
+export interface LineageNode {
+  bn: string;
+  en: string;
+  /** literal Tailwind text-size class, e.g. 'text-2xl' */
+  sizeClass: string;
+  /** literal Tailwind bg-[...] class for the pill's diamond dot */
+  dotClass: string;
+  /** literal Tailwind border-[...] class for the pill's ring */
+  borderClass: string;
+  connector?: boolean;
+  hasBranch?: boolean;
+  branches?: LineageBranch[];
+}
+
+export type CategoryKey = 'All' | 'Prophets' | 'Revelation' | 'Battles' | 'Caliphates' | 'Science';
+
+export type ViewMode = 'timeline' | 'list' | 'map';
