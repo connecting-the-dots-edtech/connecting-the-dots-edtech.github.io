@@ -1,13 +1,20 @@
 import { eras, events } from '../data/timeline';
 import { eraStyles } from '../data/eraStyles';
 import { useTimelineApp } from '../state/TimelineAppContext';
+import { useParallax } from '../hooks/useParallax';
 
 export function EraGrid() {
   const { scrollToEra } = useTimelineApp();
+  const glowRef = useParallax<HTMLDivElement>(0.08);
 
   return (
-    <section id="eras" className="border-t border-border-gold bg-ink px-5 py-25 sm:px-10">
-      <div className="mx-auto max-w-310">
+    <section id="eras" className="relative overflow-hidden border-t border-border-gold bg-ink px-5 py-25 sm:px-10">
+      <div
+        ref={glowRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute -inset-y-20 inset-x-0 bg-[radial-gradient(60%_45%_at_50%_0%,rgba(201,162,90,0.07),transparent_70%)]"
+      />
+      <div className="relative mx-auto max-w-310">
         <div className="mb-12.5 text-center">
           <div className="mb-3 text-xs tracking-[0.34em] text-gold uppercase">◆ Chapters of Time</div>
           <h2 className="font-serif text-[clamp(30px,4vw,48px)] font-normal text-cream">Eight eras, one continuous story</h2>

@@ -33,7 +33,7 @@ export const eraStyles: Record<string, EraStyle> = {
     accentBorderLeft3: 'border-l-[3px] border-l-[#8FB4E6]',
     stemDown: 'bg-linear-to-b from-[#8FB4E6] to-[rgba(201,162,90,0.15)]',
     stemUp: 'bg-linear-to-b from-[rgba(201,162,90,0.15)] to-[#8FB4E6]',
-    minimapFlex: 'flex-[560]',
+    minimapFlex: 'flex-[1850]',
   },
   prophets: {
     tintBg: 'bg-[#1E1A32]',
@@ -121,10 +121,23 @@ export const eraStyles: Record<string, EraStyle> = {
   },
 };
 
-/** era id -> [width @ zoom 0, 1, 2, 3] as literal `min-w-[Npx]` classes */
+/**
+ * era id -> [width @ zoom 0, 1, 2, 3] as literal `min-w-[Npx]` classes.
+ *
+ * Each era band uses `overflow-hidden`, so a band narrower than
+ * `eventsInThatEra.length * 256px` (event cards are `w-64`) silently
+ * clips cards off-screen instead of erroring — that's what happened when
+ * cosmos grew from 1 dummy event to 6 real ones but kept its old width.
+ * Whenever an event's `era` changes or a new event is added, re-check
+ * that era's width here: at minimum, width - 44px (the row's padding)
+ * must exceed eventCount * ~290px so cards have breathing room via
+ * `justify-around`. Where the nominal `baseW * scale` would dip below
+ * that floor at low zoom, the entry is clamped to the floor instead
+ * (noted inline) rather than letting it shrink and clip.
+ */
 export const eraWidthClasses: Record<string, [string, string, string, string]> = {
-  cosmos: ['min-w-[392px]', 'min-w-[560px]', 'min-w-[840px]', 'min-w-[1232px]'],
-  prophets: ['min-w-[854px]', 'min-w-[1220px]', 'min-w-[1830px]', 'min-w-[2684px]'],
+  cosmos: ['min-w-[1850px]', 'min-w-[1850px]', 'min-w-[2775px]', 'min-w-[4070px]'], // 6 events; zoom 0 floored to zoom 1
+  prophets: ['min-w-[1000px]', 'min-w-[1220px]', 'min-w-[1830px]', 'min-w-[2684px]'], // 3 events; zoom 0 floored up from 854px
   jahiliyya: ['min-w-[252px]', 'min-w-[360px]', 'min-w-[540px]', 'min-w-[792px]'],
   seerah: ['min-w-[1428px]', 'min-w-[2040px]', 'min-w-[3060px]', 'min-w-[4488px]'],
   rashidun: ['min-w-[602px]', 'min-w-[860px]', 'min-w-[1290px]', 'min-w-[1892px]'],

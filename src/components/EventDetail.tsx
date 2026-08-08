@@ -1,6 +1,7 @@
 import { events, eraById, categories, eventMatchesCategory } from '../data/timeline';
 import { eraStyles } from '../data/eraStyles';
 import { useTimelineApp } from '../state/TimelineAppContext';
+import { useParallax } from '../hooks/useParallax';
 
 function categoryLabelFor(evId: number): string {
   const ev = events.find((e) => e.id === evId)!;
@@ -14,10 +15,16 @@ export function EventDetail() {
   const index = events.findIndex((e) => e.id === detailEvent.id);
   const prev = index > 0 ? events[index - 1] : null;
   const next = index < events.length - 1 ? events[index + 1] : null;
+  const bgRef = useParallax<HTMLDivElement>(0.07);
 
   return (
-    <section id="event" className="border-t border-border-gold bg-linear-to-b from-ink-alt to-ink px-5 py-25 sm:px-10">
-      <div className="mx-auto max-w-290">
+    <section id="event" className="relative overflow-hidden border-t border-border-gold bg-ink-alt px-5 py-25 sm:px-10">
+      <div
+        ref={bgRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute -inset-y-20 inset-x-0 bg-linear-to-b from-ink-alt to-ink"
+      />
+      <div className="relative mx-auto max-w-290">
         <div className="mb-7 text-xs tracking-[0.34em] text-gold uppercase">◆ Event Detail — Documentary View</div>
         <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[1.5fr_1fr]">
           <div>

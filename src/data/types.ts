@@ -7,8 +7,6 @@ export interface Era {
   tint: string;
   accent: string;
   glyph: string;
-  /** relative width at zoom level 1 (px) */
-  baseW: number;
 }
 
 export interface TimelineEvent {

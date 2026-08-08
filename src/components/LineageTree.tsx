@@ -1,12 +1,17 @@
 import { lineage } from '../data/timeline';
+import { useParallax } from '../hooks/useParallax';
 
 export function LineageTree() {
+  const bgRef = useParallax<HTMLDivElement>(0.1);
+
   return (
-    <section
-      id="lineage"
-      className="border-t border-border-gold bg-[radial-gradient(120%_90%_at_50%_0%,#14101E_0%,#0A0A12_55%,#08090F_100%)] px-5 py-25 sm:px-10"
-    >
-      <div className="mx-auto max-w-250 text-center">
+    <section id="lineage" className="relative overflow-hidden border-t border-border-gold bg-ink px-5 py-25 sm:px-10">
+      <div
+        ref={bgRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute -inset-y-20 inset-x-0 bg-[radial-gradient(120%_90%_at_50%_0%,#14101E_0%,#0A0A12_55%,#08090F_100%)]"
+      />
+      <div className="relative mx-auto max-w-250 text-center">
         <div className="mb-3 text-xs tracking-[0.34em] text-gold uppercase">◆ The Sacred Lineage</div>
         <h2 className="mb-2.5 font-serif text-[clamp(30px,4vw,48px)] font-normal text-cream">From Adam (AS) onward</h2>
         <p className="mx-auto mb-12.5 max-w-140 text-[15px] leading-[1.6] text-mute">
