@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
 import { TimelinePage } from './pages/TimelinePage';
@@ -40,13 +40,13 @@ function Layout() {
 
 function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <ThemeProvider>
         <TimelineAppProvider>
           <Layout />
         </TimelineAppProvider>
       </ThemeProvider>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
 
