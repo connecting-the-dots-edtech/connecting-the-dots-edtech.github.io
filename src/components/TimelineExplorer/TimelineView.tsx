@@ -1,7 +1,9 @@
+import { useMemo, useRef } from 'react';
 import { eras, events, eraById } from '../../data/timeline';
 import { eraStyles, eraWidthClasses } from '../../data/eraStyles';
 import { useTimelineApp } from '../../state/TimelineAppContext';
 import { useDragScroll } from '../../hooks/useDragScroll';
+import { useConnectingLine } from '../../hooks/useConnectingLine';
 import type { TimelineEvent, Era } from '../../data/types';
 
 function EventCard({ ev, era, side }: { ev: TimelineEvent; era: Era; side: 'up' | 'down' }) {
@@ -20,7 +22,15 @@ function EventCard({ ev, era, side }: { ev: TimelineEvent; era: Era; side: 'up' 
   );
 }
 
-function EventColumn({ ev, era }: { ev: TimelineEvent; era: Era }) {
+function EventColumn({
+  ev,
+  era,
+  onNodeRef,
+}: {
+  ev: TimelineEvent;
+  era: Era;
+  onNodeRef: (id: number, el: HTMLElement | null) => void;
+}) {
   const { openQuickLook } = useTimelineApp();
   const style = eraStyles[era.id];
   const side = ev.up ? 'up' : 'down';
@@ -31,12 +41,13 @@ function EventColumn({ ev, era }: { ev: TimelineEvent; era: Era }) {
         {side === 'up' && (
           <>
             <EventCard ev={ev} era={era} side="up" />
-            <span className={`h-8.5 w-0.5 ${style.stemDown}`} />
+            <span className={`h-32.5 w-0.5 ${style.stemDown}`} />
           </>
         )}
       </div>
 
       <button
+        ref={(el) => onNodeRef(ev.id, el)}
         type="button"
         onClick={() => openQuickLook(ev)}
         aria-label={ev.titleEn}
@@ -46,7 +57,7 @@ function EventColumn({ ev, era }: { ev: TimelineEvent; era: Era }) {
       <div className="flex w-full flex-1 flex-col items-center justify-start">
         {side === 'down' && (
           <>
-            <span className={`h-8.5 w-0.5 ${style.stemUp}`} />
+            <span className={`h-32.5 w-0.5 ${style.stemUp}`} />
             <EventCard ev={ev} era={era} side="down" />
           </>
         )}
@@ -59,12 +70,31 @@ export function TimelineView() {
   const { trackRef, zoom } = useTimelineApp();
   useDragScroll(trackRef);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const nodeIds = useMemo(() => events.map((ev) => ev.id), []);
+  const { pathRef, geometry, registerNode } = useConnectingLine(containerRef, trackRef, nodeIds);
+
   return (
     <div className="mt-8.5">
       <div ref={trackRef} className="scrollbar-thin overflow-x-auto overflow-y-hidden px-5 sm:px-10">
-        <div className="relative flex h-180 min-w-min">
-          <div className="absolute top-[54%] right-0 left-0 z-1 h-0.5 -translate-y-1/2 bg-[linear-gradient(90deg,rgba(201,162,90,0.12)_0%,rgba(201,162,90,0.65)_5%,rgba(201,162,90,0.65)_95%,rgba(201,162,90,0.12)_100%)] shadow-[0_0_16px_rgba(201,162,90,0.4)]" />
-          <div className="pointer-events-none absolute top-[54%] right-0 left-0 z-1 h-2.5 -translate-y-1/2 bg-[repeating-linear-gradient(90deg,transparent_0px,transparent_63px,rgba(201,162,90,0.3)_63px,rgba(201,162,90,0.3)_64px)]" />
+        <div ref={containerRef} className="relative flex h-180 min-w-min">
+          {geometry.d && (
+            <svg
+              className="pointer-events-none absolute inset-0 z-1"
+              width={geometry.width}
+              height={geometry.height}
+              viewBox={`0 0 ${geometry.width} ${geometry.height}`}
+            >
+              <path
+                ref={pathRef}
+                d={geometry.d}
+                fill="none"
+                strokeWidth={2}
+                strokeLinecap="round"
+                className="stroke-gold drop-shadow-[0_0_6px_rgba(201,162,90,0.5)]"
+              />
+            </svg>
+          )}
           <div className="absolute top-[54%] left-0 z-1 -translate-y-1/2">
             <span className="block h-2.25 w-2.25 rounded-full border-2 border-gold" />
           </div>
@@ -100,7 +130,7 @@ export function TimelineView() {
 
                 <div className="absolute inset-0 z-2 flex items-stretch justify-around px-5.5">
                   {eraEvents.map((ev) => (
-                    <EventColumn key={ev.id} ev={ev} era={eraById[ev.era]} />
+                    <EventColumn key={ev.id} ev={ev} era={eraById[ev.era]} onNodeRef={registerNode} />
                   ))}
                 </div>
               </div>
