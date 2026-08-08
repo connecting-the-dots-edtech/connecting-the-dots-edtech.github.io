@@ -97,7 +97,10 @@
   --color-ink-alt: #f2ebda;
   --color-ink-alt-2: #ece2cb;
   --color-panel: #ffffff;
-  --color-card: #ffffff;
+  /* a soft warm ivory, not stark white — echoes how the dark-mode card
+     (--color-card above) sits gently against its era tint instead of
+     jumping out at full contrast */
+  --color-card: #f6efe0;
 
   --color-cream-text: #201b12;
   --color-dim: #4a4232;
@@ -196,11 +199,13 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-a {
-  color: var(--color-gold);
-}
-a:hover {
-  color: var(--color-gold-light);
+@layer base {
+  a {
+    color: var(--color-gold);
+  }
+  a:hover {
+    color: var(--color-gold-light);
+  }
 }
 
 ::selection {

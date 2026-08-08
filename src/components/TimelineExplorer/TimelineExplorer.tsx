@@ -1,7 +1,6 @@
 import { useTimelineApp } from '../../state/TimelineAppContext';
 import { TimelineView } from './TimelineView';
 import { ListView } from './ListView';
-import { MapView } from './MapView';
 import { ScrubberMinimap } from './ScrubberMinimap';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
 import type { ViewMode } from '../../data/types';
@@ -9,7 +8,6 @@ import type { ViewMode } from '../../data/types';
 const VIEWS: { id: ViewMode; label: string }[] = [
   { id: 'timeline', label: 'Timeline' },
   { id: 'list', label: 'List' },
-  { id: 'map', label: 'Map' },
 ];
 
 export function TimelineExplorer() {
@@ -20,21 +18,12 @@ export function TimelineExplorer() {
     <section
       id="timeline"
       ref={revealRef}
-      className={`relative border-t border-border-gold bg-linear-to-b from-ink to-ink-alt py-22.5 pb-17.5 transition-[opacity,transform] duration-700 ease-out ${
+      className={`relative border-t border-border-gold bg-linear-to-b from-ink to-ink-alt pt-10 pb-17.5 sm:pt-14 transition-[opacity,transform] duration-700 ease-out ${
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
       }`}
     >
-      <div className="mx-auto flex max-w-310 flex-wrap items-end justify-between gap-6 px-5 sm:px-10">
-        <div>
-          <div className="mb-3 text-xs tracking-[0.34em] text-gold uppercase">◆ The Grand Timeline</div>
-          <h2 className="font-serif text-[clamp(30px,4vw,48px)] font-normal text-cream">Scrub through the ages</h2>
-          <p className="mt-3 max-w-130 text-[15px] leading-[1.6] text-mute">
-            Drag horizontally to travel through time. Each era carries its own parallax backdrop; zoom in to reveal
-            individual events.
-          </p>
-        </div>
-
-        <div className="flex flex-col items-start gap-3.5 sm:items-end">
+      <div className="mx-auto flex max-w-310 justify-center px-5 sm:px-10">
+        <div className="flex flex-col items-center gap-3.5">
           <div className="inline-flex rounded-full border border-border-strong bg-(--surface-2) p-1" role="tablist" aria-label="Timeline view mode">
             {VIEWS.map((v) => (
               <button
@@ -88,7 +77,6 @@ export function TimelineExplorer() {
         </>
       )}
       {view === 'list' && <ListView />}
-      {view === 'map' && <MapView />}
     </section>
   );
 }

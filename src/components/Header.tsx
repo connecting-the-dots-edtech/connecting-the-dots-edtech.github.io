@@ -25,9 +25,6 @@ export function Header({ onOpenSearch }: HeaderProps) {
         <a href="#lineage" className="hidden text-[13px] tracking-[0.14em] text-dim uppercase hover:text-gold-light sm:inline">
           Lineage
         </a>
-        <a href="#event" className="hidden text-[13px] tracking-[0.14em] text-dim uppercase hover:text-gold-light sm:inline">
-          Event
-        </a>
         <button
           type="button"
           onClick={onOpenSearch}
@@ -36,9 +33,6 @@ export function Header({ onOpenSearch }: HeaderProps) {
           <span className="inline-block h-3 w-3 rounded-full border-[1.5px] border-gold" />
           Search
         </button>
-        <span className="hidden rounded-full border border-border-strong px-3.5 py-1.5 font-bn text-xs text-mute sm:inline">
-          বাংলা
-        </span>
         <ThemeToggle />
       </nav>
     </header>

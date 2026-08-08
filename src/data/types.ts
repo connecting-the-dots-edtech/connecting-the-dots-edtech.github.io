@@ -47,4 +47,4 @@ export interface LineageNode {
 
 export type CategoryKey = 'All' | 'Prophets' | 'Revelation' | 'Battles' | 'Caliphates' | 'Science';
 
-export type ViewMode = 'timeline' | 'list' | 'map';
+export type ViewMode = 'timeline' | 'list';

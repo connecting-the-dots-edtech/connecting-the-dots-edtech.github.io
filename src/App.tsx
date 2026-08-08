@@ -2,7 +2,6 @@ import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { TimelineExplorer } from './components/TimelineExplorer/TimelineExplorer';
 import { EraGrid } from './components/EraGrid';
-import { EventDetail } from './components/EventDetail';
 import { LineageTree } from './components/LineageTree';
 import { Footer } from './components/Footer';
 import { SearchOverlay } from './components/SearchOverlay';
@@ -18,7 +17,6 @@ function Page() {
       <Hero />
       <TimelineExplorer />
       <EraGrid />
-      <EventDetail />
       <LineageTree />
       <Footer />
       <SearchOverlay />

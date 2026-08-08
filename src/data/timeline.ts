@@ -43,6 +43,3 @@ export function eventMatchesCategory(ev: TimelineEvent, category: CategoryKey): 
 }
 
 export const eraById: Record<string, Era> = Object.fromEntries(eras.map((e) => [e.id, e]));
-
-/** The event featured by default in the Event Detail section before a visitor picks one. */
-export const defaultEventId = 1;

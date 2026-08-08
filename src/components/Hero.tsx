@@ -52,7 +52,7 @@ export function Hero() {
         <div className="mt-10 flex flex-wrap justify-center gap-4">
           <a
             href="#timeline"
-            className="inline-flex items-center gap-2.5 rounded-full bg-gold-fill px-7.5 py-4 text-[15px] font-semibold tracking-[0.02em] text-[#12121A] shadow-[0_12px_40px_rgba(201,162,90,0.28)] hover:brightness-105"
+            className="inline-flex items-center gap-2.5 rounded-full bg-gold px-7.5 py-4 text-[15px] font-semibold tracking-[0.02em] text-ink shadow-[0_12px_40px_rgba(201,162,90,0.28)] hover:brightness-105"
           >
             Begin the Journey <span aria-hidden="true">→</span>
           </a>
