@@ -2,13 +2,21 @@ import { eras, events } from '../data/timeline';
 import { eraStyles } from '../data/eraStyles';
 import { useTimelineApp } from '../state/TimelineAppContext';
 import { useParallax } from '../hooks/useParallax';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 
 export function EraGrid() {
   const { scrollToEra } = useTimelineApp();
   const glowRef = useParallax<HTMLDivElement>(0.08);
+  const { ref: revealRef, isVisible } = useScrollReveal<HTMLElement>();
 
   return (
-    <section id="eras" className="relative overflow-hidden border-t border-border-gold bg-ink px-5 py-25 sm:px-10">
+    <section
+      id="eras"
+      ref={revealRef}
+      className={`relative overflow-hidden border-t border-border-gold bg-ink px-5 py-25 transition-[opacity,transform] duration-700 ease-out sm:px-10 ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
+      }`}
+    >
       <div
         ref={glowRef}
         aria-hidden="true"
@@ -39,7 +47,7 @@ export function EraGrid() {
                   <div className="mt-auto">
                     <div className={`text-[11px] tracking-[0.18em] uppercase ${style.accentText}`}>{era.span}</div>
                     <div className="mt-1.5 font-bn text-2xl text-cream">{era.bn}</div>
-                    <div className="mt-0.5 font-serif text-[15px] text-[#B8B09C]">{era.en}</div>
+                    <div className="mt-0.5 font-serif text-[15px] text-dim">{era.en}</div>
                     <div className="mt-3 text-xs text-faint">{count} events →</div>
                   </div>
                 </div>

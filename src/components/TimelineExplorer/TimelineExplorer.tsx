@@ -3,6 +3,7 @@ import { TimelineView } from './TimelineView';
 import { ListView } from './ListView';
 import { MapView } from './MapView';
 import { ScrubberMinimap } from './ScrubberMinimap';
+import { useScrollReveal } from '../../hooks/useScrollReveal';
 import type { ViewMode } from '../../data/types';
 
 const VIEWS: { id: ViewMode; label: string }[] = [
@@ -13,9 +14,16 @@ const VIEWS: { id: ViewMode; label: string }[] = [
 
 export function TimelineExplorer() {
   const { view, setView, zoom, zoomIn, zoomOut, zoomLabel } = useTimelineApp();
+  const { ref: revealRef, isVisible } = useScrollReveal<HTMLElement>();
 
   return (
-    <section id="timeline" className="relative border-t border-border-gold bg-linear-to-b from-ink to-ink-alt py-22.5 pb-17.5">
+    <section
+      id="timeline"
+      ref={revealRef}
+      className={`relative border-t border-border-gold bg-linear-to-b from-ink to-ink-alt py-22.5 pb-17.5 transition-[opacity,transform] duration-700 ease-out ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
+      }`}
+    >
       <div className="mx-auto flex max-w-310 flex-wrap items-end justify-between gap-6 px-5 sm:px-10">
         <div>
           <div className="mb-3 text-xs tracking-[0.34em] text-gold uppercase">◆ The Grand Timeline</div>
@@ -27,7 +35,7 @@ export function TimelineExplorer() {
         </div>
 
         <div className="flex flex-col items-start gap-3.5 sm:items-end">
-          <div className="inline-flex rounded-full border border-border-strong bg-white/4 p-1" role="tablist" aria-label="Timeline view mode">
+          <div className="inline-flex rounded-full border border-border-strong bg-(--surface-2) p-1" role="tablist" aria-label="Timeline view mode">
             {VIEWS.map((v) => (
               <button
                 key={v.id}
@@ -37,7 +45,7 @@ export function TimelineExplorer() {
                 onClick={() => setView(v.id)}
                 className={
                   view === v.id
-                    ? 'rounded-full bg-gold px-4.5 py-2 text-[13px] text-[#12121A]'
+                    ? 'rounded-full bg-gold-fill px-4.5 py-2 text-[13px] text-[#12121A]'
                     : 'rounded-full px-4.5 py-2 text-[13px] text-dim'
                 }
               >
@@ -54,7 +62,7 @@ export function TimelineExplorer() {
                 onClick={zoomOut}
                 disabled={zoom === 0}
                 aria-label="Zoom out"
-                className="h-8.5 w-8.5 rounded-full border border-border-gold bg-white/3 text-xl leading-none text-gold disabled:opacity-35"
+                className="h-8.5 w-8.5 rounded-full border border-border-gold bg-(--surface-1) text-xl leading-none text-gold disabled:opacity-35"
               >
                 −
               </button>
@@ -64,7 +72,7 @@ export function TimelineExplorer() {
                 onClick={zoomIn}
                 disabled={zoom === 3}
                 aria-label="Zoom in"
-                className="h-8.5 w-8.5 rounded-full border border-border-gold bg-white/3 text-lg leading-none text-gold disabled:opacity-35"
+                className="h-8.5 w-8.5 rounded-full border border-border-gold bg-(--surface-1) text-lg leading-none text-gold disabled:opacity-35"
               >
                 +
               </button>

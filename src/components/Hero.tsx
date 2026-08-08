@@ -1,27 +1,33 @@
 import { useParallax } from '../hooks/useParallax';
+import { useTheme } from '../state/ThemeContext';
 import { stars } from '../data/stars';
 
 export function Hero() {
   const starfieldRef = useParallax<HTMLDivElement>(0.18);
   const haloRef = useParallax<HTMLDivElement>(0.05);
+  const { theme } = useTheme();
 
   return (
     <section
       id="home"
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[radial-gradient(120%_80%_at_50%_8%,#17182B_0%,#0C0D18_45%,#08090F_100%)] px-6 text-center"
+      className="hero-backdrop relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center"
     >
-      <div
-        ref={starfieldRef}
-        aria-hidden="true"
-        className="absolute inset-x-0 -top-[10%] bottom-0 bg-[radial-gradient(1px_1px_at_20%_30%,rgba(255,255,255,0.7),transparent),radial-gradient(1px_1px_at_70%_20%,rgba(255,255,255,0.5),transparent),radial-gradient(1px_1px_at_40%_70%,rgba(255,255,255,0.6),transparent),radial-gradient(1.5px_1.5px_at_85%_60%,rgba(255,255,255,0.5),transparent),radial-gradient(1px_1px_at_12%_82%,rgba(255,255,255,0.5),transparent),radial-gradient(1px_1px_at_58%_48%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px_1.5px_at_90%_33%,rgba(255,255,255,0.55),transparent)]"
-      />
-      {stars.map((s, i) => (
-        <span
-          key={i}
-          aria-hidden="true"
-          className={`absolute rounded-full bg-gold-pale animate-twinkle ${s.left} ${s.top} ${s.size} ${s.timing}`}
-        />
-      ))}
+      {theme === 'dark' && (
+        <>
+          <div
+            ref={starfieldRef}
+            aria-hidden="true"
+            className="absolute inset-x-0 top-[-10%] bottom-0 bg-[radial-gradient(1px_1px_at_20%_30%,rgba(255,255,255,0.7),transparent),radial-gradient(1px_1px_at_70%_20%,rgba(255,255,255,0.5),transparent),radial-gradient(1px_1px_at_40%_70%,rgba(255,255,255,0.6),transparent),radial-gradient(1.5px_1.5px_at_85%_60%,rgba(255,255,255,0.5),transparent),radial-gradient(1px_1px_at_12%_82%,rgba(255,255,255,0.5),transparent),radial-gradient(1px_1px_at_58%_48%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px_1.5px_at_90%_33%,rgba(255,255,255,0.55),transparent)]"
+          />
+          {stars.map((s, i) => (
+            <span
+              key={i}
+              aria-hidden="true"
+              className={`absolute rounded-full bg-gold-pale animate-twinkle ${s.left} ${s.top} ${s.size} ${s.timing}`}
+            />
+          ))}
+        </>
+      )}
       <div ref={haloRef} aria-hidden="true" className="absolute top-[14%] h-[340px] w-[340px] opacity-50">
         <span className="absolute inset-0 animate-spin-slow border border-[rgba(201,162,90,0.22)]" />
         <span className="absolute inset-[30px] rotate-45 animate-spin-slow-reverse border border-[rgba(201,162,90,0.16)]" />
@@ -46,7 +52,7 @@ export function Hero() {
         <div className="mt-10 flex flex-wrap justify-center gap-4">
           <a
             href="#timeline"
-            className="inline-flex items-center gap-2.5 rounded-full bg-gold px-7.5 py-4 text-[15px] font-semibold tracking-[0.02em] text-[#12121A] shadow-[0_12px_40px_rgba(201,162,90,0.28)] hover:brightness-105"
+            className="inline-flex items-center gap-2.5 rounded-full bg-gold-fill px-7.5 py-4 text-[15px] font-semibold tracking-[0.02em] text-[#12121A] shadow-[0_12px_40px_rgba(201,162,90,0.28)] hover:brightness-105"
           >
             Begin the Journey <span aria-hidden="true">→</span>
           </a>

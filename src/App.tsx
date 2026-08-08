@@ -8,6 +8,7 @@ import { Footer } from './components/Footer';
 import { SearchOverlay } from './components/SearchOverlay';
 import { EventModal } from './components/EventModal';
 import { TimelineAppProvider, useTimelineApp } from './state/TimelineAppContext';
+import { ThemeProvider } from './state/ThemeContext';
 
 function Page() {
   const { openSearch } = useTimelineApp();
@@ -28,9 +29,11 @@ function Page() {
 
 function App() {
   return (
-    <TimelineAppProvider>
-      <Page />
-    </TimelineAppProvider>
+    <ThemeProvider>
+      <TimelineAppProvider>
+        <Page />
+      </TimelineAppProvider>
+    </ThemeProvider>
   );
 }
 

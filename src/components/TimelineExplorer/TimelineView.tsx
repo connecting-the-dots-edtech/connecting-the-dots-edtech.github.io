@@ -11,7 +11,7 @@ function EventCard({ ev, era, side }: { ev: TimelineEvent; era: Era; side: 'up' 
     <button
       type="button"
       onClick={() => openQuickLook(ev)}
-      className={`w-full cursor-pointer rounded-2xl border border-white/25 bg-card px-5 py-4.5 text-left shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_22px_46px_rgba(0,0,0,0.62)] ${
+      className={`flex w-full cursor-pointer items-center justify-center rounded-2xl border border-(--card-border) bg-card px-5 py-4.5 text-center shadow-(--card-shadow) ${
         side === 'up' ? style.accentBorderTop3 : style.accentBorderBottom3
       }`}
     >
@@ -92,9 +92,6 @@ export function TimelineView() {
                   </div>
                 </div>
 
-                <div
-                  className={`absolute top-[54%] left-0 z-4 h-3.5 w-3.5 -translate-x-px -translate-y-1/2 rotate-45 border-2 ${style.tintBg} ${style.accentBorder}`}
-                />
                 <div
                   className={`absolute top-[calc(54%+18px)] left-1.5 z-4 rounded-full border border-border-gold bg-ink/55 px-2.25 py-0.5 font-serif text-[11px] whitespace-nowrap ${style.accentText}`}
                 >

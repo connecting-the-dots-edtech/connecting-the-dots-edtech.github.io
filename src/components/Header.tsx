@@ -1,3 +1,5 @@
+import { ThemeToggle } from './ThemeToggle';
+
 interface HeaderProps {
   onOpenSearch: () => void;
 }
@@ -29,7 +31,7 @@ export function Header({ onOpenSearch }: HeaderProps) {
         <button
           type="button"
           onClick={onOpenSearch}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border-gold bg-white/4 px-3.5 py-2 text-[13px] text-dim hover:border-gold hover:text-cream-text"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border-gold bg-(--surface-2) px-3.5 py-2 text-[13px] text-dim hover:border-gold hover:text-cream-text"
         >
           <span className="inline-block h-3 w-3 rounded-full border-[1.5px] border-gold" />
           Search
@@ -37,6 +39,7 @@ export function Header({ onOpenSearch }: HeaderProps) {
         <span className="hidden rounded-full border border-border-strong px-3.5 py-1.5 font-bn text-xs text-mute sm:inline">
           বাংলা
         </span>
+        <ThemeToggle />
       </nav>
     </header>
   );

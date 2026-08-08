@@ -15,7 +15,7 @@ export function ListView() {
             key={ev.id}
             type="button"
             onClick={() => openQuickLook(ev)}
-            className={`grid grid-cols-[120px_1fr_auto] items-center gap-5 rounded-[10px] border border-border bg-white/2 p-4 px-5 text-left ${style.accentBorderLeft3}`}
+            className={`grid grid-cols-[120px_1fr_auto] items-center gap-5 rounded-[10px] border border-border bg-(--surface-1) p-4 px-5 text-left ${style.accentBorderLeft3}`}
           >
             <span className={`font-serif text-base ${style.accentText}`}>{ev.year}</span>
             <span className="flex flex-col">

@@ -15,7 +15,7 @@ export function ScrubberMinimap() {
               key={era.id}
               type="button"
               onClick={() => scrollToEra(era.id)}
-              className={`relative flex items-center justify-center border-r border-black/35 text-[10px] tracking-[0.12em] text-[#B8B09C] uppercase ${style.tintBg} ${style.minimapFlex}`}
+              className={`relative flex items-center justify-center border-r border-black/35 text-[10px] tracking-[0.12em] text-dim uppercase ${style.tintBg} ${style.minimapFlex}`}
             >
               <span className={`absolute inset-x-0 top-0 h-0.5 opacity-70 ${style.accentBg}`} />
               {era.short}

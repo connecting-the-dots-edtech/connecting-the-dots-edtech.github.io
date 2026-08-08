@@ -23,6 +23,19 @@
       rel="stylesheet"
     />
     <title>Connecting the Dots — An Interactive Documentary of Islamic History</title>
+    <script>
+      // Set the theme before first paint so there's no dark->light flash on
+      // load. Kept intentionally tiny and dependency-free — this runs
+      // before React (or anything else) exists.
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          if (saved === 'light' || saved === 'dark') {
+            document.documentElement.dataset.theme = saved;
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

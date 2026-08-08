@@ -59,8 +59,8 @@ export function SearchOverlay() {
               onClick={() => setCategory(c)}
               className={
                 category === c
-                  ? 'rounded-full border border-gold bg-gold px-4 py-2 text-[13px] text-[#12121A]'
-                  : 'rounded-full border border-border-strong bg-white/4 px-4 py-2 text-[13px] text-[#B8B09C]'
+                  ? 'rounded-full border border-gold-fill bg-gold-fill px-4 py-2 text-[13px] text-[#12121A]'
+                  : 'rounded-full border border-border-strong bg-(--surface-2) px-4 py-2 text-[13px] text-mute'
               }
             >
               {c}
@@ -80,7 +80,7 @@ export function SearchOverlay() {
                   closeSearch();
                   openQuickLook(ev);
                 }}
-                className={`grid grid-cols-[90px_1fr_auto] items-center gap-4 rounded-[10px] border border-border bg-white/3 p-3.5 px-4.5 text-left ${style.accentBorderLeft3}`}
+                className={`grid grid-cols-[90px_1fr_auto] items-center gap-4 rounded-[10px] border border-border bg-(--surface-1) p-3.5 px-4.5 text-left ${style.accentBorderLeft3}`}
               >
                 <span className={`font-serif ${style.accentText}`}>{ev.year}</span>
                 <span className="font-bn text-base text-cream-text">{ev.title}</span>

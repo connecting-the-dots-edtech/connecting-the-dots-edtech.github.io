@@ -2,6 +2,7 @@ import { events, eraById, categories, eventMatchesCategory } from '../data/timel
 import { eraStyles } from '../data/eraStyles';
 import { useTimelineApp } from '../state/TimelineAppContext';
 import { useParallax } from '../hooks/useParallax';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 
 function categoryLabelFor(evId: number): string {
   const ev = events.find((e) => e.id === evId)!;
@@ -16,9 +17,16 @@ export function EventDetail() {
   const prev = index > 0 ? events[index - 1] : null;
   const next = index < events.length - 1 ? events[index + 1] : null;
   const bgRef = useParallax<HTMLDivElement>(0.07);
+  const { ref: revealRef, isVisible } = useScrollReveal<HTMLElement>();
 
   return (
-    <section id="event" className="relative overflow-hidden border-t border-border-gold bg-ink-alt px-5 py-25 sm:px-10">
+    <section
+      id="event"
+      ref={revealRef}
+      className={`relative overflow-hidden border-t border-border-gold bg-ink-alt px-5 py-25 transition-[opacity,transform] duration-700 ease-out sm:px-10 ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
+      }`}
+    >
       <div
         ref={bgRef}
         aria-hidden="true"
@@ -51,7 +59,7 @@ export function EventDetail() {
             {detailEvent.source && (
               <div className="mt-8.5 border-t border-border-gold pt-5.5">
                 <div className="mb-3.5 text-[11px] tracking-[0.2em] text-gold uppercase">Source</div>
-                <div className="flex gap-3 py-2.5 text-sm text-[#B8B09C]">
+                <div className="flex gap-3 py-2.5 text-sm text-mute">
                   <span className="text-teal">◇</span>
                   <span>{detailEvent.source}</span>
                 </div>
@@ -60,24 +68,24 @@ export function EventDetail() {
           </div>
 
           <aside className="flex flex-col gap-5 lg:sticky lg:top-22.5">
-            <div className="overflow-hidden rounded-2xl border border-border bg-white/2">
+            <div className="overflow-hidden rounded-2xl border border-border bg-(--surface-1)">
               <div className="flex border-b border-border">
-                <span className="flex-1 bg-gold py-3 text-center text-xs font-semibold text-[#12121A]">Images</span>
+                <span className="flex-1 bg-gold-fill py-3 text-center text-xs font-semibold text-[#12121A]">Images</span>
                 <span className="flex-1 py-3 text-center text-xs text-mute">Video</span>
                 <span className="flex-1 py-3 text-center text-xs text-mute">Audio</span>
               </div>
               <div className="flex h-45 items-center justify-center bg-[repeating-linear-gradient(45deg,rgba(95,168,160,0.1)_0px,rgba(95,168,160,0.1)_8px,rgba(95,168,160,0.03)_8px,rgba(95,168,160,0.03)_16px)]">
-                <span className="font-mono text-[11px] text-[#7E8C86]">{detailEvent.thumb}</span>
+                <span className="font-mono text-[11px] text-faint">{detailEvent.thumb}</span>
               </div>
               <div className="flex gap-2 p-3">
                 <span className="h-12 flex-1 rounded-md border border-[rgba(201,162,90,0.4)] bg-[rgba(201,162,90,0.14)]" />
-                <span className="h-12 flex-1 rounded-md bg-white/5" />
-                <span className="h-12 flex-1 rounded-md bg-white/5" />
-                <span className="h-12 flex-1 rounded-md bg-white/5" />
+                <span className="h-12 flex-1 rounded-md bg-(--surface-2)" />
+                <span className="h-12 flex-1 rounded-md bg-(--surface-2)" />
+                <span className="h-12 flex-1 rounded-md bg-(--surface-2)" />
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border bg-white/2 p-4.5 text-[13px] leading-[1.9] text-[#B8B09C]">
+            <div className="rounded-2xl border border-border bg-(--surface-1) p-4.5 text-[13px] leading-[1.9] text-mute">
               <div className="flex justify-between">
                 <span className="text-quiet">Era</span>
                 <span className="font-bn">{era.bn}</span>
@@ -97,7 +105,7 @@ export function EventDetail() {
                 type="button"
                 disabled={!prev}
                 onClick={() => prev && showFullEvent(prev)}
-                className="flex-1 rounded-full bg-gold py-3.25 text-center text-sm font-semibold text-[#12121A] disabled:opacity-35"
+                className="flex-1 rounded-full bg-gold-fill py-3.25 text-center text-sm font-semibold text-[#12121A] disabled:opacity-35"
               >
                 ← Prev event
               </button>

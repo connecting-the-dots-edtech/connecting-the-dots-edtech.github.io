@@ -71,7 +71,7 @@ export function EventModal() {
         type="button"
         onClick={closeQuickLook}
         aria-label="Close"
-        className="absolute top-6 right-6 z-20 h-9.5 w-9.5 rounded-full border-none bg-white/8 text-base text-cream-text hover:bg-white/14"
+        className="absolute top-6 right-6 z-20 h-9.5 w-9.5 rounded-full border-none bg-(--surface-3) text-base text-cream-text hover:bg-(--surface-4)"
       >
         ✕
       </button>

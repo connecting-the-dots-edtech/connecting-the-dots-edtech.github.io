@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+/*
+ * Theme architecture: every color that needs to differ between dark and
+ * light mode is a CSS custom property, never a literal hex baked into a
+ * component. `@theme` registers the ones Tailwind should also expose as
+ * named utilities (bg-ink, text-gold, ...); plain `:root` holds the rest
+ * (era colors, surface tints) that are only ever consumed via arbitrary
+ * `[var(--x)]` syntax. `:root[data-theme="light"]` overrides both sets in
+ * one place — components never know which theme is active.
+ */
 @theme {
   --color-ink: #08090f;
   --color-ink-alt: #0b0d15;
@@ -14,8 +23,11 @@
   --color-quiet: #7e786b;
   --color-ghost: #6e6858;
 
+  /* text/icon/border accent — darkens in light mode for contrast */
   --color-gold: #c9a25a;
   --color-gold-light: #e4c078;
+  /* button/pill fills paired with dark text on top — stays bright in both themes */
+  --color-gold-fill: #c9a25a;
   --color-gold-pale: #f5efe0;
   --color-cream: #f3ecdb;
   --color-teal: #5fa8a0;
@@ -36,6 +48,116 @@
   --animate-rise-in: riseIn 1.1s ease both;
   --animate-rise-in-fast: riseIn 0.4s ease both;
   --animate-pulse-ring: pulseRing 3.5s ease-out infinite;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* subtle surface washes (hover states, faint fills) — step from
+     barely-there to clearly-visible, consumed as e.g. bg-[var(--surface-2)] */
+  --surface-1: rgba(255, 255, 255, 0.025);
+  --surface-2: rgba(255, 255, 255, 0.045);
+  --surface-3: rgba(255, 255, 255, 0.08);
+  --surface-4: rgba(255, 255, 255, 0.14);
+
+  --card-border: rgba(255, 255, 255, 0.25);
+  --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 22px 46px rgba(0, 0, 0, 0.62);
+
+  /* full backdrop gradients for sections whose background is too composite
+     for a Tailwind arbitrary-value class to theme reliably (the type
+     inference between background-color/background-image gets ambiguous
+     for a bare var()) — consumed via the .hero-backdrop/.lineage-backdrop
+     classes below instead of a bg-[...] utility */
+  --hero-bg: radial-gradient(120% 80% at 50% 8%, #17182b 0%, #0c0d18 45%, #08090f 100%);
+  --lineage-bg: radial-gradient(120% 90% at 50% 0%, #14101e 0%, #0a0a12 55%, #08090f 100%);
+
+  /* era palette — tint (band background) + accent (text/border/glyph) per era */
+  --era-cosmos-tint: #181c2e;
+  --era-cosmos-accent: #8fb4e6;
+  --era-prophets-tint: #1e1a32;
+  --era-prophets-accent: #c1a6ec;
+  --era-jahiliyya-tint: #241e14;
+  --era-jahiliyya-accent: #e6be85;
+  --era-seerah-tint: #16221d;
+  --era-seerah-accent: #6fbeb4;
+  --era-rashidun-tint: #221e12;
+  --era-rashidun-accent: #d6ae64;
+  --era-umayyad-tint: #161c26;
+  --era-umayyad-accent: #9cbeda;
+  --era-abbasid-tint: #241d10;
+  --era-abbasid-accent: #edc985;
+  --era-later-tint: #141e22;
+  --era-later-accent: #93d2c6;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-ink: #faf6ee;
+  --color-ink-alt: #f2ebda;
+  --color-ink-alt-2: #ece2cb;
+  --color-panel: #ffffff;
+  --color-card: #ffffff;
+
+  --color-cream-text: #201b12;
+  --color-dim: #4a4232;
+  --color-mute: #6b6350;
+  --color-faint: #85795f;
+  --color-quiet: #9a917a;
+  --color-ghost: #aea48d;
+
+  --color-gold: #96701e;
+  --color-gold-light: #b4863a;
+  --color-gold-pale: #201b12;
+  --color-cream: #1b170f;
+  --color-teal: #1f7a6c;
+
+  --color-border: rgba(30, 22, 8, 0.1);
+  --color-border-strong: rgba(30, 22, 8, 0.18);
+  --color-border-gold: rgba(150, 112, 30, 0.35);
+
+  --surface-1: rgba(30, 22, 8, 0.03);
+  --surface-2: rgba(30, 22, 8, 0.05);
+  --surface-3: rgba(30, 22, 8, 0.08);
+  --surface-4: rgba(30, 22, 8, 0.12);
+
+  --card-border: #d8cfb6;
+  --card-shadow: 0 1px 2px rgba(40, 30, 10, 0.05), 0 14px 30px rgba(40, 30, 10, 0.08);
+
+  --hero-bg: radial-gradient(120% 80% at 50% 8%, #ffffff 0%, #fbf5e8 45%, #f2ebda 100%);
+  --lineage-bg: radial-gradient(120% 90% at 50% 0%, #fbf6ff 0%, #f5eedd 55%, #f2ebda 100%);
+
+  /*
+   * Light mode deliberately does NOT give each era its own hue the way dark
+   * mode does — 8 distinct pastel hues (sky blue, lavender, mint...) read as
+   * a scattered rainbow against a warm paper background. Instead every era
+   * alternates between two tones from the same beige family, by position in
+   * the eras array (src/data/timeline.ts): even index -> A, odd -> B. That
+   * keeps adjacent timeline bands visually distinct — the only job this
+   * color ever had — while the era header (glyph + name) does the actual
+   * identifying, same as always.
+   */
+  --tone-a-tint: #f2e6d4;
+  --tone-a-accent: #a9825a;
+  --tone-b-tint: #eeddcc;
+  --tone-b-accent: #5c4530;
+
+  --era-cosmos-tint: var(--tone-a-tint);
+  --era-cosmos-accent: var(--tone-a-accent);
+  --era-prophets-tint: var(--tone-b-tint);
+  --era-prophets-accent: var(--tone-b-accent);
+  --era-jahiliyya-tint: var(--tone-a-tint);
+  --era-jahiliyya-accent: var(--tone-a-accent);
+  --era-seerah-tint: var(--tone-b-tint);
+  --era-seerah-accent: var(--tone-b-accent);
+  --era-rashidun-tint: var(--tone-a-tint);
+  --era-rashidun-accent: var(--tone-a-accent);
+  --era-umayyad-tint: var(--tone-b-tint);
+  --era-umayyad-accent: var(--tone-b-accent);
+  --era-abbasid-tint: var(--tone-a-tint);
+  --era-abbasid-accent: var(--tone-a-accent);
+  --era-later-tint: var(--tone-b-tint);
+  --era-later-accent: var(--tone-b-accent);
 }
 
 @keyframes twinkle {
@@ -71,6 +193,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 a {
@@ -83,6 +206,13 @@ a:hover {
 ::selection {
   background: rgba(201, 162, 90, 0.28);
   color: #fff3dc;
+}
+
+.hero-backdrop {
+  background: var(--hero-bg);
+}
+.lineage-backdrop {
+  background: var(--lineage-bg);
 }
 
 ::-webkit-scrollbar {
