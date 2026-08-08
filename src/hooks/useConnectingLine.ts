@@ -142,6 +142,13 @@ export function useConnectingLine(
       frame = requestAnimationFrame(tick);
     }
 
+    // Observe the scroll viewport (trackRef), not the inner content row —
+    // that row spans the entire horizontally-scrollable width (thousands of
+    // px), so IntersectionObserver's area-based ratio against its own huge
+    // bounding box would stay near zero on any normal-width viewport,
+    // worst of all on narrow mobile screens, and the threshold would
+    // effectively never be met.
+    const visibilityTarget = scrollEl ?? container;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
@@ -159,7 +166,7 @@ export function useConnectingLine(
       },
       { threshold: VISIBILITY_THRESHOLD },
     );
-    observer.observe(container);
+    observer.observe(visibilityTarget);
 
     return () => {
       observer.disconnect();

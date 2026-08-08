@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { events as allEvents, categories, eventMatchesCategory } from '../data/timeline';
 import type { CategoryKey, TimelineEvent, ViewMode } from '../data/types';
 
@@ -46,20 +47,25 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
   const [category, setCategory] = useState<CategoryKey>('All');
 
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   const zoomIn = useCallback(() => setZoom((z) => Math.min(ZOOM_SCALES.length - 1, z + 1)), []);
   const zoomOut = useCallback(() => setZoom((z) => Math.max(0, z - 1)), []);
 
-  const scrollToEra = useCallback((eraId: string) => {
-    setView('timeline');
-    // the timeline view mounts on the next tick when switching from list
-    setTimeout(() => {
-      const track = trackRef.current;
-      if (!track) return;
-      const band = track.querySelector<HTMLElement>(`[data-era="${eraId}"]`);
-      if (band) track.scrollTo({ left: band.offsetLeft - 60, behavior: 'smooth' });
-    }, 60);
-  }, []);
+  const scrollToEra = useCallback(
+    (eraId: string) => {
+      setView('timeline');
+      navigate('/timeline');
+      // the Timeline page mounts on the next tick after navigating
+      setTimeout(() => {
+        const track = trackRef.current;
+        if (!track) return;
+        const band = track.querySelector<HTMLElement>(`[data-era="${eraId}"]`);
+        if (band) track.scrollTo({ left: band.offsetLeft - 60, behavior: 'smooth' });
+      }, 80);
+    },
+    [navigate],
+  );
 
   const openQuickLook = useCallback((ev: TimelineEvent) => setQuickLookEvent(ev), []);
   const closeQuickLook = useCallback(() => setQuickLookEvent(null), []);

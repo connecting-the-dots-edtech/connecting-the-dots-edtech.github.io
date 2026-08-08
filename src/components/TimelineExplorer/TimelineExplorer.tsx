@@ -18,11 +18,23 @@ export function TimelineExplorer() {
     <section
       id="timeline"
       ref={revealRef}
-      className={`relative border-t border-border-gold bg-linear-to-b from-ink to-ink-alt pt-10 pb-17.5 sm:pt-14 transition-[opacity,transform] duration-700 ease-out ${
+      className={`relative border-t border-border-gold bg-linear-to-b from-ink to-ink-alt pt-18 pb-17.5 sm:pt-20 transition-[opacity,transform] duration-700 ease-out ${
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
       }`}
     >
-      <div className="mx-auto flex max-w-310 justify-center px-5 sm:px-10">
+      {/* The timeline itself is the first thing on screen — no heading or
+          controls above it — so opening this page shows the rail full-height
+          without scrolling. The view toggle and zoom controls live below it
+          instead of gating access to the thing people actually came for. */}
+      {view === 'timeline' && (
+        <>
+          <TimelineView />
+          <ScrubberMinimap />
+        </>
+      )}
+      {view === 'list' && <ListView />}
+
+      <div className="mx-auto mt-10 flex max-w-310 justify-center px-5 sm:px-10">
         <div className="flex flex-col items-center gap-3.5">
           <div className="inline-flex rounded-full border border-border-strong bg-(--surface-2) p-1" role="tablist" aria-label="Timeline view mode">
             {VIEWS.map((v) => (
@@ -69,14 +81,6 @@ export function TimelineExplorer() {
           )}
         </div>
       </div>
-
-      {view === 'timeline' && (
-        <>
-          <TimelineView />
-          <ScrubberMinimap />
-        </>
-      )}
-      {view === 'list' && <ListView />}
     </section>
   );
 }

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useParallax } from '../hooks/useParallax';
 import { useTheme } from '../state/ThemeContext';
 import { stars } from '../data/stars';
@@ -50,24 +51,19 @@ export function Hero() {
           সৃষ্টির সূচনা থেকে আদম (আঃ), নবীগণ ও ইসলামের মহাযাত্রা — একটি নিমগ্ন সময়রেখায় ভ্রমণ করুন।
         </p>
         <div className="mt-10 flex flex-wrap justify-center gap-4">
-          <a
-            href="#timeline"
+          <Link
+            to="/timeline"
             className="inline-flex items-center gap-2.5 rounded-full bg-gold px-7.5 py-4 text-[15px] font-semibold tracking-[0.02em] text-ink shadow-[0_12px_40px_rgba(201,162,90,0.28)] hover:brightness-105"
           >
             Begin the Journey <span aria-hidden="true">→</span>
-          </a>
-          <a
-            href="#lineage"
+          </Link>
+          <Link
+            to="/lineage"
             className="inline-flex items-center gap-2.5 rounded-full border border-border-strong px-7.5 py-4 text-[15px] text-cream-text hover:border-border-gold hover:text-gold-light"
           >
             Explore the Lineage
-          </a>
+          </Link>
         </div>
-      </div>
-
-      <div className="absolute bottom-8.5 left-1/2 z-2 flex -translate-x-1/2 animate-float-y flex-col items-center gap-2.5 text-[11px] tracking-[0.28em] text-ghost uppercase">
-        Scroll to enter
-        <span className="h-11 w-px bg-linear-to-b from-gold to-transparent" />
       </div>
     </section>
   );
