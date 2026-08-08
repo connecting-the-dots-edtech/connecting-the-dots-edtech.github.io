@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Raw content exports staged before being turned into src/content/events/*.md
+src/content-drafts/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

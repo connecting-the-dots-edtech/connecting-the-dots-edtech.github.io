@@ -30,13 +30,6 @@ export const lineage: LineageNode[] = [
   { bn: 'মুহাম্মদ ﷺ', en: 'The Prophet', sizeClass: 'text-[26px]', dotClass: 'bg-gold', borderClass: 'border-[rgba(201,162,90,0.7)]', connector: false },
 ];
 
-export const generalSources: string[] = [
-  'আল-কুরআন — সূরা আল-আলাক (৯৬:১–৫)',
-  'সহীহ আল-বুখারি — কিতাব বদউল ওহী',
-  'ইবনে হিশাম — আস-সীরাহ আন-নাবাউইয়্যাহ',
-  'মার্টিন লিংস — Muhammad: His Life Based on the Earliest Sources',
-];
-
 export const categories: CategoryKey[] = ['All', 'Prophets', 'Revelation', 'Battles', 'Caliphates', 'Science'];
 
 export function eventMatchesCategory(ev: TimelineEvent, category: CategoryKey): boolean {
@@ -45,11 +38,11 @@ export function eventMatchesCategory(ev: TimelineEvent, category: CategoryKey): 
   if (category === 'Revelation') return ev.era === 'seerah';
   if (category === 'Battles') return /যুদ্ধ|বিজয়|Badr|Conquest/i.test(ev.title + ev.titleEn);
   if (category === 'Caliphates') return ['rashidun', 'umayyad', 'abbasid', 'later'].includes(ev.era);
-  if (category === 'Science') return ev.id === 13;
+  if (category === 'Science') return false;
   return true;
 }
 
 export const eraById: Record<string, Era> = Object.fromEntries(eras.map((e) => [e.id, e]));
 
 /** The event featured by default in the Event Detail section before a visitor picks one. */
-export const defaultEventId = 6;
+export const defaultEventId = 1;

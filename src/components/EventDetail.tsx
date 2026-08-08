@@ -1,4 +1,4 @@
-import { events, eraById, generalSources, categories, eventMatchesCategory } from '../data/timeline';
+import { events, eraById, categories, eventMatchesCategory } from '../data/timeline';
 import { eraStyles } from '../data/eraStyles';
 import { useTimelineApp } from '../state/TimelineAppContext';
 
@@ -41,15 +41,15 @@ export function EventDetail() {
 
             <p className="font-bn text-lg leading-[1.9] text-dim">{detailEvent.body}</p>
 
-            <div className="mt-8.5 border-t border-border-gold pt-5.5">
-              <div className="mb-3.5 text-[11px] tracking-[0.2em] text-gold uppercase">General Sources</div>
-              {generalSources.map((r, i) => (
-                <div key={i} className="flex gap-3 border-b border-border py-2.5 text-sm text-[#B8B09C]">
+            {detailEvent.source && (
+              <div className="mt-8.5 border-t border-border-gold pt-5.5">
+                <div className="mb-3.5 text-[11px] tracking-[0.2em] text-gold uppercase">Source</div>
+                <div className="flex gap-3 py-2.5 text-sm text-[#B8B09C]">
                   <span className="text-teal">◇</span>
-                  <span>{r}</span>
+                  <span>{detailEvent.source}</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
           <aside className="flex flex-col gap-5 lg:sticky lg:top-22.5">

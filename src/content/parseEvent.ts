@@ -46,6 +46,7 @@ export function parseEventMarkdown(raw: string): TimelineEvent {
     body,
   };
   if (fields.arabic) event.arabic = fields.arabic;
+  if (fields.source) event.source = fields.source;
 
   return event;
 }

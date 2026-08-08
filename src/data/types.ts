@@ -23,6 +23,8 @@ export interface TimelineEvent {
   body: string;
   /** Qur'anic verse directly tied to this event, where one genuinely applies */
   arabic?: string;
+  /** the specific source cited for this event's content, e.g. a book + volume */
+  source?: string;
 }
 
 export interface LineageBranch {
