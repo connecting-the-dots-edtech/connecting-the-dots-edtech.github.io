@@ -63,8 +63,10 @@ source file — it does not execute JS, so a class built by interpolation or
   `useEffect`/`useLayoutEffect` only for continuous runtime values: the timeline
   curve's clip geometry (`useConnectingLine`, via `CurveSvg`'s clip rect), the
   minimap's segment flex and viewport box (`ScrubberMinimap`), the reader's
-  progress-bar width (`EventModal`), and the drag-scroll cursor
-  (`useDragScroll`). Follow the pattern in `src/hooks/useDragScroll.ts`.
+  progress-bar width (`EventModal`), the drag-scroll cursor
+  (`useDragScroll`), and the lineage SVG `viewBox` and the stage's
+  `data-dragging` cursor flag (`usePanZoom`). Follow the pattern in
+  `src/hooks/useDragScroll.ts`.
 
 ### Language split
 
@@ -80,7 +82,8 @@ rendered. No uppercase or letter-spacing on Bangla. Fonts: `font-bn-display`
 (Amiri, then Traditional Arabic) for Arabic. No text under 12px; italic is never
 synthesised. Motion is limited to the starfield twinkle, home emblem rotation,
 the home thread's travelling light, the timeline curve draw-in, card hover lift,
-the Eras panel swap fade and the reader slide-in; all of it respects
+the Eras panel swap fade, the reader slide-in and the lineage view tween (380ms,
+instant under reduced motion); all of it respects
 `prefers-reduced-motion`: CSS via the global rule in `index.css` (plus
 `motion-reduce:scroll-auto` on the timeline scroller), and JS smooth scrolls pass
 `scrollBehavior()` from `src/lib/motion.ts` (`'auto'` under reduced motion).
@@ -88,7 +91,7 @@ the Eras panel swap fade and the reader slide-in; all of it respects
 ### Shared UI
 
 `src/components/ui/` holds the reusable pieces: `EventCard` (timeline and
-feature variants), `SectionHeading`, `PageHeader`, `Emblem`, `CurveSvg` and the
+feature variants), `SectionHeading`, `Emblem`, `CurveSvg` and the
 icon set in `icons.tsx`. The timeline curve is computed in `src/lib/curve.ts`
 (cosine segments through measured `[data-curve-pt]` anchors) and driven by
 `src/hooks/useCurve.ts` (measuring) and `src/hooks/useConnectingLine.ts`
@@ -100,9 +103,17 @@ shortcuts like `/` don't fire inside inputs), `src/hooks/useMediaQuery.ts`, and
 
 ### Lineage tree
 
-The tree on `/lineage` is hardcoded in `src/components/LineageTree.tsx` (centred
-main line, Ishaq as a side branch, generation-gap labels). There is no lineage
-data in `src/data/`.
+`/lineage` is an interactive SVG tree of the prophets, with pan and zoom. The data
+is `src/data/lineage.ts`: `LineageNode`s (type in `src/data/types.ts`) at
+hand-placed coordinates on a 2100×1040 canvas, each with a `parent` and a `link`
+evidence level (`q` Qur'an or sahih hadith, `h` historians' accounts, `g`
+generations skipped or disputed). Pure helpers (`ancestorChain`, `mainLine`,
+`childrenOf`, `edgePath`, `labelPlacement`) are in `src/lib/lineage.ts`. Pan and
+zoom are in `src/hooks/usePanZoom.ts` (drag, pinch, Ctrl/⌘+wheel, animated
+`zoomBy`/`centerOn`); selection, the details panel and the legend are in
+`src/components/LineageTree.tsx`. To add a person: add a node with `x`/`y`, a
+`parent` and a `link`, and give a `source` (nodes without one fall back to a
+default by link type). Names, notes and sources are Bangla.
 
 ### Content model: Markdown files + a manual map registry
 
@@ -151,5 +162,7 @@ view. `ListView` groups events by era.
 
 An external browser verification script depends on a set of DOM ids/data attributes
 (`tl-scroller`, `tl-track`, `data-curve-pt`, `era-journey`, `era-panel`,
-`lineage-tree`, `reader`, `search`, ...). Don't rename them without checking
-for uses.
+`lineage-tree`, `lin-svg`, `lin-info`, `lin-key`, `lin-key-btn`, `data-node`,
+`data-edge`, `data-lin`, `reader`, `search`, ...). `data-lineage` on a node is
+`main` or `branch`: on or off the আদম → মুহাম্মদ ﷺ chain. Don't rename them
+without checking for uses.
