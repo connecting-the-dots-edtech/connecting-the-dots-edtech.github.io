@@ -129,6 +129,8 @@ export function usePanZoom(stageRef: RefObject<HTMLElement | null>, svgRef: RefO
     let downTarget: Element | null = null;
 
     const onDown = (e: PointerEvent) => {
+      // primary button only: a right/middle click must not select, and may never send a pointerup
+      if (e.button !== 0) return;
       const target = e.target as Element;
       if (target.closest(optsRef.current.ignore)) return;
       st.setPointerCapture(e.pointerId);
@@ -173,10 +175,22 @@ export function usePanZoom(stageRef: RefObject<HTMLElement | null>, svgRef: RefO
       if (!moved && pts.size === 0 && downTarget) optsRef.current.onTap(downTarget);
       start = { view: { ...view.current }, pts: new Map(pts) };
     };
+    // a cancelled press (system gesture, lost capture) ends like a release but is never a tap
+    const onCancel = (e: PointerEvent) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.delete(e.pointerId);
+      delete st.dataset.dragging;
+      start = { view: { ...view.current }, pts: new Map(pts) };
+    };
     const onWheel = (e: WheelEvent) => {
-      // overlays (details panel, legend) scroll natively; they are not part of the canvas
-      if ((e.target as Element).closest(optsRef.current.ignore)) return;
+      // overlays (details panel, legend) scroll natively; they are not part of the canvas.
+      // A pinch over one must still not zoom the whole page.
+      if ((e.target as Element).closest(optsRef.current.ignore)) {
+        if (e.ctrlKey || e.metaKey) e.preventDefault();
+        return;
+      }
       e.preventDefault();
+      cancelAnimationFrame(anim.current);
       if (e.ctrlKey || e.metaKey) {
         const [cx, cy] = clientToCanvas(e.clientX, e.clientY);
         zoomAt(Math.exp(e.deltaY * 0.01), cx, cy);
@@ -190,14 +204,14 @@ export function usePanZoom(stageRef: RefObject<HTMLElement | null>, svgRef: RefO
     st.addEventListener('pointerdown', onDown);
     st.addEventListener('pointermove', onMove);
     st.addEventListener('pointerup', onUp);
-    st.addEventListener('pointercancel', onUp);
+    st.addEventListener('pointercancel', onCancel);
     st.addEventListener('wheel', onWheel, { passive: false });
     return () => {
       cancelAnimationFrame(anim.current);
       st.removeEventListener('pointerdown', onDown);
       st.removeEventListener('pointermove', onMove);
       st.removeEventListener('pointerup', onUp);
-      st.removeEventListener('pointercancel', onUp);
+      st.removeEventListener('pointercancel', onCancel);
       st.removeEventListener('wheel', onWheel);
     };
   }, [stageRef, apply, scale, clientToCanvas, zoomAt]);
