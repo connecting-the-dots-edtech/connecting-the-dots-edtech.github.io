@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { events } from '../data/timeline';
 import { DEFAULT_SOURCE, LINK_TEXT } from '../data/lineage';
@@ -22,8 +23,25 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
  * Sent to, Note, Source and one `Read →` per article. Shared by the desktop panel (`#lin-info`) and the
  * phone bottom sheet (`#lin-sheet`); the caller supplies the positioned container.
  */
-export function LineageInfo({ n, onSelect, onClose }: { n: LineageNode; onSelect: (id: string) => void; onClose: () => void }) {
+export function LineageInfo({ n, onSelect, onClose }: { n: LineageNode; onSelect: (id: string) => void; onClose: (pointer: boolean) => void }) {
   const { openQuickLook } = useTimelineApp();
+  const nameRef = useRef<HTMLHeadingElement>(null);
+  /** set by a Parent/Children link, so focus follows to the new node's name instead of dropping to <body> */
+  const focusName = useRef(false);
+  const go = (id: string) => {
+    focusName.current = true;
+    onSelect(id);
+  };
+  // each node starts at the top of its panel or sheet
+  useLayoutEffect(() => {
+    const name = nameRef.current;
+    const box = name?.closest('#lin-info, #lin-sheet');
+    if (box) box.scrollTop = 0;
+    if (focusName.current) {
+      focusName.current = false;
+      name?.focus({ preventScroll: true });
+    }
+  }, [n.id]);
   const parent = n.parent ? lineageById[n.parent] : undefined;
   const kids = childrenOf(n.id);
   const tags = [n.kind === 'u' ? 'উলুল আযম রাসূল' : '', n.kind !== 'n' ? 'নবী' : '', n.book ? `কিতাব: ${n.book}` : ''].filter(Boolean);
@@ -33,7 +51,7 @@ export function LineageInfo({ n, onSelect, onClose }: { n: LineageNode; onSelect
   return (
     <>
       <div className="mb-1 flex min-h-[34px] items-center justify-between gap-2.5">
-        <button type="button" aria-label="Close" onClick={onClose} className="grid size-8 flex-none cursor-pointer place-items-center rounded-lg text-text-2 hover:bg-raised">
+        <button type="button" lang="en" aria-label="Close" onClick={(e) => onClose(e.detail > 0)} className="grid size-8 flex-none cursor-pointer place-items-center rounded-lg text-text-2 hover:bg-raised">
           <CloseIcon className="size-4" />
         </button>
         {n.ar && (
@@ -42,7 +60,9 @@ export function LineageInfo({ n, onSelect, onClose }: { n: LineageNode; onSelect
           </div>
         )}
       </div>
-      <div className="font-bn-display text-[25px] leading-[1.3] text-text">{n.bn}</div>
+      <h2 ref={nameRef} tabIndex={-1} className="font-bn-display text-[25px] leading-[1.3] text-text">
+        {n.bn}
+      </h2>
       {tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {tags.map((t) => (
@@ -54,7 +74,7 @@ export function LineageInfo({ n, onSelect, onClose }: { n: LineageNode; onSelect
       )}
       {parent && n.link && (
         <InfoRow label="Parent">
-          <button type="button" className={link} onClick={() => onSelect(parent.id)}>
+          <button type="button" className={link} onClick={() => go(parent.id)}>
             {parent.bn}
           </button>
           <span className="block text-[13px] text-muted">{LINK_TEXT[n.link]}</span>
@@ -69,7 +89,7 @@ export function LineageInfo({ n, onSelect, onClose }: { n: LineageNode; onSelect
         <InfoRow label="Children">
           <span className="flex flex-wrap gap-x-3 gap-y-1">
             {kids.map((c) => (
-              <button key={c.id} type="button" className={link} onClick={() => onSelect(c.id)}>
+              <button key={c.id} type="button" className={link} onClick={() => go(c.id)}>
                 {c.bn}
               </button>
             ))}

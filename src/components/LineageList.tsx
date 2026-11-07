@@ -1,6 +1,5 @@
-import { useImperativeHandle, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import type { Ref } from 'react';
-import { flushSync } from 'react-dom';
 import type { LineageLink } from '../data/types';
 import { bnDigits } from '../lib/format';
 import { lineageRows } from '../lib/lineage';
@@ -33,6 +32,11 @@ const ITEMS = lineageRows();
 const RUN_OF: Record<string, string> = Object.fromEntries(
   ITEMS.flatMap((it) => ('run' in it ? it.run.map((r) => [r.node.id, it.run[0].node.id]) : [])),
 );
+if (import.meta.env.DEV) {
+  // checked once at load, so a too-deep row fails even while it sits inside a closed fold
+  const deepest = Math.max(...ITEMS.flatMap((it) => ('run' in it ? it.run : [it]).map((r) => r.depth)));
+  if (deepest > 3) throw new Error(`LineageList: depth ${deepest} has no column classes; extend LEFT/PAD`);
+}
 
 /*
  * Columns are 22px wide; column `d` has its centre at d × 22 + 11 px. Depths 0–3 occur in the data,
@@ -148,8 +152,21 @@ function Fold({ run, chain, onOpen }: { run: LineageRow[]; chain: Set<string> | 
 }
 
 export interface LineageListHandle {
-  /** Expand the fold holding `id` (if any) and scroll its row into view. */
+  /** Expand the fold holding `id` (if any) and scroll the selected row into view. */
   reveal: (id: string) => void;
+}
+
+/**
+ * Scroll the page so `row` sits fully between the sticky header and the bottom sheet (measured as
+ * rendered), centred in that band. Nothing happens when it already fits.
+ */
+function scrollIntoBand(row: Element) {
+  const r = row.getBoundingClientRect();
+  const top = Math.max(0, document.querySelector('header')?.getBoundingClientRect().bottom ?? 0) + 8;
+  const bottom = (document.getElementById('lin-sheet')?.getBoundingClientRect().top ?? window.innerHeight) - 8;
+  if (r.top >= top && r.bottom <= bottom) return;
+  const delta = bottom - top < r.height ? r.top - top : r.top + r.height / 2 - (top + bottom) / 2;
+  window.scrollTo({ top: window.scrollY + delta, behavior: scrollBehavior() });
 }
 
 /**
@@ -170,18 +187,38 @@ export function LineageList({
   const rootRef = useRef<HTMLDivElement>(null);
   const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() => new Set());
   const openRun = (key: string) => setOpenRuns((s) => (s.has(key) ? s : new Set(s).add(key)));
+  /** bumped by reveal(), so re-picking the selected node scrolls to it again */
+  const [revealed, setRevealed] = useState(0);
+  /** the fold just expanded with its button (which unmounts): focus moves to its first member */
+  const focusRun = useRef<string | null>(null);
 
   useImperativeHandle(ref, () => ({
     reveal: (id: string) => {
       const key = RUN_OF[id];
-      // commit the expanded run first so the row exists to scroll to
-      if (key) flushSync(() => openRun(key));
-      rootRef.current?.querySelector(`[data-row="${id}"]`)?.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
+      if (key) openRun(key);
+      setRevealed((t) => t + 1);
     },
   }));
 
+  // after a chip, link or row tap: runs after the commit, so the expanded run, the bottom padding
+  // and the sheet at its real height are all in place
+  useLayoutEffect(() => {
+    const row = selected ? rootRef.current?.querySelector(`[data-row="${selected}"]`) : null;
+    if (row) scrollIntoBand(row);
+  }, [selected, revealed]);
+
+  useEffect(() => {
+    const key = focusRun.current;
+    if (!key) return;
+    focusRun.current = null;
+    rootRef.current?.querySelector<HTMLButtonElement>(`[data-row="${key}"] button`)?.focus({ preventScroll: true });
+  }, [openRuns]);
+
   return (
-    <div id="lin-v" ref={rootRef}>
+    // while a node is selected, room below the last rows so they can scroll clear of the sheet (≤ 60vh).
+    // transition-none: the reduced-motion rule's 0.01ms transition would hold the padding at 0 while
+    // the scroll above is measured, capping it short of the last rows.
+    <div id="lin-v" ref={rootRef} className={selected ? 'pb-[60vh] transition-none' : 'transition-none'}>
       <div className="mb-2 flex flex-wrap gap-x-3.5 gap-y-1.5 border-b border-line pt-1 pb-3 font-bn text-[12.5px] text-text-2">
         <LegendEntries className="inline-flex items-center gap-[7px]" />
         <LegendEntries lines lineWidth="w-5" className="inline-flex items-center gap-[7px]" />
@@ -190,7 +227,18 @@ export function LineageList({
         {ITEMS.map((it) => {
           if (!('run' in it)) return <Row key={it.node.id} row={it} chain={chain} selected={selected} onSelect={onSelect} />;
           const key = it.run[0].node.id;
-          if (!openRuns.has(key)) return <Fold key={key} run={it.run} chain={chain} onOpen={() => openRun(key)} />;
+          if (!openRuns.has(key))
+            return (
+              <Fold
+                key={key}
+                run={it.run}
+                chain={chain}
+                onOpen={() => {
+                  focusRun.current = key;
+                  openRun(key);
+                }}
+              />
+            );
           return it.run.map((r) => <Row key={r.node.id} row={r} chain={chain} selected={selected} onSelect={onSelect} />);
         })}
       </div>

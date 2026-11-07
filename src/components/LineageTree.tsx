@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode, Ref } from 'react';
+import type { FocusEvent, ReactNode, Ref } from 'react';
 import { LINEAGE_W, lineage } from '../data/lineage';
 import type { LineageNode } from '../data/types';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -13,6 +13,8 @@ import type { LineageListHandle } from './LineageList';
 
 /** Fitted view: framed to the drawn content (labels included), so names stay readable at 1440×900. */
 const FIT: ViewBox = { x: 10, y: 34, w: 2080, h: 1000 };
+/** The details containers: desktop panel and phone sheet. */
+const PANELS = '#lin-info, #lin-sheet';
 const PAD_X = 'pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]';
 const TOOL_BTN =
   'inline-grid size-9 flex-none cursor-pointer place-items-center rounded-full border border-line-strong text-text-2 hover:border-gold hover:text-gold';
@@ -110,7 +112,7 @@ function TreeSvg({
       ref={svgRef}
       viewBox={`${FIT.x} ${FIT.y} ${FIT.w} ${FIT.h}`}
       preserveAspectRatio="xMidYMid meet"
-      aria-label="নবীগণের বংশধারা"
+      aria-label="আদম (আঃ) থেকে মুহাম্মদ ﷺ পর্যন্ত নবীগণের বংশবৃক্ষ"
       className="block size-full"
     >
       {lineage
@@ -134,7 +136,7 @@ function Chips({ selected, onPick }: { selected: string | null; onPick: (id: str
   return (
     <div className={PAD_X}>
       <div className="mx-auto flex max-w-280 items-center gap-4 pt-3.5 pb-3">
-        <div aria-label="Prophets" className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:thin]">
+        <div role="group" aria-label="Prophets" className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:thin]">
           {lineageProphets.map((p) => (
             <button
               key={p.id}
@@ -157,7 +159,7 @@ function Chips({ selected, onPick }: { selected: string | null; onPick: (id: str
 function BottomBar({ tools }: { tools?: ReactNode }) {
   return (
     <div className={PAD_X}>
-      <div className="mx-auto flex max-w-280 items-start gap-4 pt-3 pb-7">
+      <div className="mx-auto flex max-w-280 items-start gap-4 pt-3 pb-2">
         <div className="flex min-w-0 flex-1 flex-wrap gap-x-2.5 gap-y-1 text-[13px] text-muted">
           <b lang="en" className="font-ui font-semibold text-text-2">
             Sources:
@@ -176,11 +178,34 @@ function BottomBar({ tools }: { tools?: ReactNode }) {
 interface ViewProps {
   selected: string | null;
   chain: Set<string> | null;
-  setSelected: (id: string | null) => void;
+  /** select a node (or clear with null), remembering what opened the details */
+  select: (id: string | null) => void;
+  /** close the details and return focus; `pointer`: closed by a click or tap, so focusing must not scroll */
+  close: (pointer: boolean) => void;
+}
+
+/**
+ * Closing the details: focus goes back to what opened them, else to the node's chip, node or row.
+ * Focus that already sits elsewhere (not in the details, not lost to <body>) is left alone.
+ */
+function returnFocus(id: string, opener: Element | null, pointer: boolean) {
+  const a = document.activeElement;
+  if (a && a !== document.body && !a.closest(PANELS)) return;
+  const tries = [
+    opener,
+    document.querySelector(`[data-lin="${id}"]`),
+    document.querySelector(`#lineage-tree:not([hidden]) [data-node="${id}"]`),
+    document.querySelector(`#lin-v [data-row="${id}"] button`),
+  ];
+  for (const el of tries) {
+    if (!(el instanceof HTMLElement || el instanceof SVGElement) || !el.isConnected) continue;
+    el.focus({ preventScroll: pointer });
+    if (document.activeElement === el) return;
+  }
 }
 
 /** Desktop and tablet: the pan/zoom canvas, legend card, details panel and zoom buttons under the stage. */
-function DesktopLineage({ selected, chain, setSelected }: ViewProps) {
+function DesktopLineage({ selected, chain, select, close }: ViewProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -190,7 +215,7 @@ function DesktopLineage({ selected, chain, setSelected }: ViewProps) {
     initial: () => FIT,
     onTap: (target) => {
       const id = target.closest<SVGGElement>('[data-node]')?.dataset.node;
-      setSelected(id ?? null);
+      select(id ?? null);
     },
   });
 
@@ -199,11 +224,25 @@ function DesktopLineage({ selected, chain, setSelected }: ViewProps) {
     (id: string) => {
       const n = lineageById[id];
       if (!n) return;
-      setSelected(id);
+      select(id);
       centerOn(n.x, n.y, 1000);
     },
-    [centerOn, setSelected],
+    [centerOn, select],
   );
+
+  /** A node reached by keyboard while off-screen (or under the panel) pans into view, at the same zoom. */
+  const keepInView = (e: FocusEvent<HTMLDivElement>) => {
+    const g = (e.target as Element).closest<SVGGElement>('[data-node]');
+    const n = g ? lineageById[g.dataset.node ?? ''] : undefined;
+    const st = stageRef.current;
+    if (!g || !n || !st || !g.matches(':focus-visible')) return;
+    const r = g.getBoundingClientRect();
+    const s = st.getBoundingClientRect();
+    const p = document.getElementById('lin-info')?.getBoundingClientRect();
+    const inside = r.left >= s.left && r.right <= s.right && r.top >= s.top && r.bottom <= s.bottom;
+    const covered = !!p && r.right > p.left && r.left < p.right && r.bottom > p.top && r.top < p.bottom;
+    if (!inside || covered) centerOn(n.x, n.y, Infinity);
+  };
 
   const node = selected ? lineageById[selected] : undefined;
 
@@ -214,6 +253,7 @@ function DesktopLineage({ selected, chain, setSelected }: ViewProps) {
       <div
         id="lineage-tree"
         ref={stageRef}
+        onFocus={keepInView}
         className="relative h-[min(76vh,880px)] min-h-[480px] cursor-grab touch-none overflow-hidden border-y border-line bg-linear-to-b from-[color-mix(in_srgb,var(--raised)_55%,var(--surface))] to-surface select-none data-[dragging=true]:cursor-grabbing"
       >
         <TreeSvg svgRef={svgRef} chain={chain} selected={selected} onActivate={focusNode} />
@@ -221,6 +261,7 @@ function DesktopLineage({ selected, chain, setSelected }: ViewProps) {
         {!node && (
           <div
             id="lin-key"
+            role="group"
             aria-label="Legend"
             className="absolute top-3 right-3 z-2 grid cursor-auto grid-cols-[auto_auto] gap-4 rounded-xl border border-line bg-[color-mix(in_srgb,var(--surface)_88%,transparent)] px-3.5 py-2.5 font-bn text-[12.5px] text-text-2 backdrop-blur-[6px]"
           >
@@ -236,9 +277,9 @@ function DesktopLineage({ selected, chain, setSelected }: ViewProps) {
           <aside
             id="lin-info"
             aria-label={node.bn}
-            className="absolute top-3.5 right-3.5 z-3 max-h-[calc(100%-28px)] w-[min(340px,calc(100%-28px))] cursor-auto overflow-auto rounded-[14px] border border-line-strong bg-surface px-[18px] pt-4 pb-3.5 shadow-(--shadow) select-text"
+            className="absolute top-3.5 right-3.5 z-3 max-h-[calc(100%-28px)] w-[min(340px,calc(100%-28px))] cursor-auto overflow-auto overscroll-contain rounded-[14px] border border-line-strong bg-surface px-[18px] pt-4 pb-3.5 shadow-(--shadow) select-text"
           >
-            <LineageInfo n={node} onSelect={focusNode} onClose={() => setSelected(null)} />
+            <LineageInfo n={node} onSelect={focusNode} onClose={close} />
           </aside>
         )}
       </div>
@@ -267,39 +308,40 @@ function DesktopLineage({ selected, chain, setSelected }: ViewProps) {
  * sheet above the tab bar. `#lineage-tree` stays in the DOM, hidden, with the static tree for test hooks;
  * pan/zoom is never attached to it.
  */
-function PhoneLineage({ selected, chain, setSelected }: ViewProps) {
+function PhoneLineage({ selected, chain, select, close }: ViewProps) {
   const listRef = useRef<LineageListHandle>(null);
   /** Select, expand its fold and scroll its row into view (chips, Parent/Children links). */
   const focusNode = useCallback(
     (id: string) => {
       if (!lineageById[id]) return;
-      setSelected(id);
+      select(id);
       listRef.current?.reveal(id);
     },
-    [setSelected],
+    [select],
   );
   const node = selected ? lineageById[selected] : undefined;
 
   return (
     <>
       <Chips selected={selected} onPick={focusNode} />
+      {/* fixed above the tab bar; first in DOM order so it comes right after the chips when tabbing */}
+      {node && (
+        <aside
+          id="lin-sheet"
+          aria-label={node.bn}
+          className="fixed right-2 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] left-2 z-46 max-h-[60vh] overflow-auto overscroll-contain rounded-[14px] border border-line-strong bg-surface px-4 pt-3.5 pb-3 shadow-(--shadow)"
+        >
+          <LineageInfo n={node} onSelect={focusNode} onClose={close} />
+        </aside>
+      )}
       <div id="lineage-tree" hidden>
         <TreeSvg chain={chain} selected={selected} onActivate={focusNode} />
       </div>
       <div className={PAD_X}>
         <div className="mx-auto max-w-280">
-          <LineageList ref={listRef} chain={chain} selected={selected} onSelect={setSelected} />
+          <LineageList ref={listRef} chain={chain} selected={selected} onSelect={select} />
         </div>
       </div>
-      {node && (
-        <aside
-          id="lin-sheet"
-          aria-label={node.bn}
-          className="fixed right-2 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] left-2 z-46 max-h-[60vh] overflow-auto rounded-[14px] border border-line-strong bg-surface px-4 pt-3.5 pb-3 shadow-(--shadow)"
-        >
-          <LineageInfo n={node} onSelect={focusNode} onClose={() => setSelected(null)} />
-        </aside>
-      )}
       <BottomBar />
     </>
   );
@@ -310,22 +352,39 @@ export function LineageTree() {
   const phone = useMediaQuery('(max-width: 760px)');
   const [selected, setSelected] = useState<string | null>(null);
   const chain = useMemo(() => (selected ? ancestorChain(selected) : null), [selected]);
+  /** The chip, node or row that opened the details; links inside the details don't replace it. */
+  const opener = useRef<Element | null>(null);
+
+  const select = useCallback((id: string | null) => {
+    const a = document.activeElement;
+    if (a && !a.closest(PANELS)) opener.current = a === document.body ? null : a;
+    setSelected(id);
+  }, []);
+
+  const close = useCallback(
+    (pointer: boolean) => {
+      if (selected) returnFocus(selected, opener.current, pointer);
+      opener.current = null;
+      setSelected(null);
+    },
+    [selected],
+  );
 
   // Escape clears the selection, but not while the reader or search is open (each owns Escape while open)
   useEffect(() => {
     if (!selected || quickLookEvent || searchOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelected(null);
+      if (e.key === 'Escape') close(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, quickLookEvent, searchOpen]);
+  }, [selected, quickLookEvent, searchOpen, close]);
 
   const View = phone ? PhoneLineage : DesktopLineage;
   return (
     <>
       <h1 className="sr-only">নবীগণের বংশধারা</h1>
-      <View selected={selected} chain={chain} setSelected={setSelected} />
+      <View selected={selected} chain={chain} select={select} close={close} />
     </>
   );
 }
