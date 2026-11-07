@@ -1,69 +1,141 @@
-import { lineage } from '../data/timeline';
-import { useParallax } from '../hooks/useParallax';
-import { useScrollReveal } from '../hooks/useScrollReveal';
+import { events } from '../data/timeline';
+import { useTimelineApp } from '../state/TimelineAppContext';
+import { PageHeader } from './ui/PageHeader';
+
+/** Main-line grid column: the middle of three on desktop, the first of two on phones. */
+const MAIN_COL = 'col-start-2 phone:col-start-1';
+/** Two-column span for the Ibrahim split and the Ismail / Ishaq pair. */
+const PAIR_COL = 'col-span-2 col-start-2 phone:col-start-1';
+
+type NodeProps = {
+  bn: string;
+  /** main-line node (default), the pair's Ismail, or Ishaq's side branch */
+  kind?: 'main' | 'pair' | 'branch';
+  major?: boolean;
+  first?: boolean;
+  note?: string;
+  onRead?: () => void;
+};
+
+const NODE_BASE =
+  'relative z-2 grid min-w-[190px] justify-items-center gap-0.5 justify-self-center rounded-[14px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--gold)_8%,var(--surface)),var(--surface))] px-6 py-3 text-center phone:max-w-[168px] phone:min-w-0 phone:px-3.5 phone:py-2.5';
+const DIAMOND =
+  "before:absolute before:-top-1.5 before:left-1/2 before:-ml-[5px] before:size-2.5 before:rotate-45 before:content-['']";
+
+function Node({ bn, kind = 'main', major, first, note, onRead }: NodeProps) {
+  const branch = kind === 'branch';
+  const border = branch ? 'border-[color-mix(in_srgb,var(--e-later)_60%,transparent)]' : major ? 'border-gold' : 'border-line-strong';
+  const shadow = major ? 'shadow-[var(--shadow),0_0_26px_var(--glow)]' : 'shadow-[var(--shadow)]';
+  const diamond = first
+    ? ''
+    : branch
+      ? DIAMOND + ' before:bg-[var(--e-later)] before:shadow-[0_0_10px_var(--e-later)]'
+      : DIAMOND + ' before:bg-gold before:shadow-[0_0_10px_var(--gold)]';
+  const col = kind === 'main' ? MAIN_COL : branch ? 'col-start-2 row-start-1' : 'row-start-1';
+  return (
+    <div
+      data-lineage={branch ? 'branch' : 'main'}
+      className={[NODE_BASE, border, shadow, diamond, col].join(' ')}
+    >
+      <span
+        className={
+          'font-bn-display leading-[1.3] text-text ' +
+          (major ? 'text-[25px] phone:text-[21px]' : 'text-[22px] phone:text-[19px]')
+        }
+      >
+        {bn}
+      </span>
+      {note && <span className="mt-1 max-w-[200px] font-bn text-[13.5px] text-muted">{note}</span>}
+      {onRead && (
+        <button
+          type="button"
+          lang="en"
+          onClick={onRead}
+          className="mt-1.5 cursor-pointer font-ui text-[13px] font-semibold text-gold"
+        >
+          Read →
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** A direct parent-to-child link: solid gold line with an optional side label. */
+function Link({ label }: { label?: string }) {
+  return (
+    <div className={'relative h-[34px] w-0.5 justify-self-center bg-gold ' + MAIN_COL}>
+      {label && (
+        <span className="absolute left-4 mt-1.5 font-bn text-[13px] whitespace-nowrap text-muted phone:text-[12.5px]">{label}</span>
+      )}
+    </div>
+  );
+}
+
+/** Many generations in between: dotted gold line labelled "বহু প্রজন্ম". */
+function Gap() {
+  return (
+    <div
+      className={
+        'relative h-16 w-0.5 justify-self-center bg-[repeating-linear-gradient(180deg,var(--gold)_0_3px,transparent_3px_8px)] ' +
+        MAIN_COL
+      }
+    >
+      <span className="absolute top-1/2 left-4 -translate-y-1/2 font-bn text-[13.5px] whitespace-nowrap text-muted phone:text-[12.5px]">
+        বহু প্রজন্ম
+      </span>
+    </div>
+  );
+}
 
 export function LineageTree() {
-  const bgRef = useParallax<HTMLDivElement>(0.1);
-  const { ref: revealRef, isVisible } = useScrollReveal<HTMLElement>();
+  const { openQuickLook } = useTimelineApp();
+  const adam = events.find((e) => e.id === 7);
 
   return (
-    <section
-      id="lineage"
-      ref={revealRef}
-      className={`relative overflow-hidden border-t border-border-gold bg-ink px-5 py-25 transition-[opacity,transform] duration-700 ease-out sm:px-10 ${
-        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-      }`}
-    >
-      <div
-        ref={bgRef}
-        aria-hidden="true"
-        className="lineage-backdrop pointer-events-none absolute -inset-y-20 inset-x-0"
-      />
-      <div className="relative mx-auto max-w-250 text-center">
-        <div className="mb-3 text-xs tracking-[0.34em] text-gold uppercase">◆ The Sacred Lineage</div>
-        <h2 className="mb-2.5 font-serif text-[clamp(30px,4vw,48px)] font-normal text-cream">From Adam (AS) onward</h2>
-        <p className="mx-auto mb-12.5 max-w-140 text-[15px] leading-[1.6] text-mute">
-          A branching tree that grows as you scroll — tracing prophethood through the generations.
-        </p>
+    <>
+      <PageHeader title="নবীগণের বংশধারা" />
+      <div className="pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]">
+        <section aria-label="নবীগণের বংশধারা" className="mx-auto max-w-280 pb-14">
+          <div className="mt-[22px] flex flex-wrap justify-center gap-[18px] font-bn text-[13.5px] text-muted">
+            <span className="inline-flex items-center gap-2">
+              <i className="inline-block h-0 w-7 border-t-2 border-gold" />
+              সরাসরি সন্তান
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <i className="inline-block h-0 w-7 border-t-2 border-dotted border-gold" />
+              মাঝে বহু প্রজন্ম
+            </span>
+          </div>
 
-        <div className="flex flex-col items-center">
-          {lineage.map((n, i) => (
-            <div key={i} className="flex flex-col items-center">
-              <div className={`inline-flex items-center gap-3.5 rounded-full border bg-panel/70 px-6.5 py-3 whitespace-nowrap backdrop-blur-sm ${n.borderClass}`}>
-                <span className={`h-2 w-2 flex-none rotate-45 ${n.dotClass}`} />
-                <span className={`font-bn text-cream ${n.sizeClass}`}>{n.bn}</span>
-                <span className="text-xs tracking-wide text-faint">{n.en}</span>
-              </div>
-
-              {n.hasBranch && n.branches && (
-                <>
-                  <span className="h-6.5 w-px bg-[rgba(201,162,90,0.4)]" />
-                  <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:justify-center sm:gap-15">
-                    <span className="absolute inset-x-1/4 top-0 hidden h-px bg-[rgba(201,162,90,0.4)] sm:block" />
-                    {n.branches.map((b, bi) => (
-                      <div key={bi} className="flex flex-col items-center">
-                        <span className="h-6.5 w-px bg-[rgba(201,162,90,0.4)]" />
-                        <div className="inline-flex items-center gap-2.5 rounded-full border border-[rgba(95,168,160,0.35)] bg-panel/70 px-5 py-2.5 whitespace-nowrap backdrop-blur-sm">
-                          <span className="font-bn text-[17px] text-gold-pale">{b.bn}</span>
-                          <span className="text-[11px] text-teal">{b.en}</span>
-                        </div>
-                        <span className="mt-2 text-[10px] tracking-wide text-ghost uppercase">{b.note}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <span className="h-6.5 w-px bg-[rgba(201,162,90,0.25)]" />
-                </>
-              )}
-
-              {n.connector && (
-                <span className="relative h-6.5 w-px bg-[rgba(201,162,90,0.4)]">
-                  <span className="absolute top-1/2 left-1/2 h-1.25 w-1.25 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-gold" />
-                </span>
-              )}
+          <div
+            id="lineage-tree"
+            className="grid [--col:260px] grid-cols-[repeat(3,var(--col))] justify-center py-7 pb-10 phone:[--col:172px] phone:grid-cols-[repeat(2,var(--col))]"
+          >
+            <Node bn="আদম (আঃ)" major first onRead={adam ? () => openQuickLook(adam) : undefined} />
+            <Link label="পুত্র" />
+            <Node bn="শীষ (আঃ)" />
+            <Gap />
+            <Node bn="নূহ (আঃ)" />
+            <Gap />
+            <Node bn="ইব্রাহিম (আঃ)" major />
+            <div className={'relative h-[34px] ' + PAIR_COL}>
+              <span className="absolute top-0 left-[calc(var(--col)_/_2_-_1px)] h-full w-0.5 bg-gold" />
+              <span className="absolute top-1/2 left-[calc(var(--col)_/_2)] h-0.5 w-(--col) bg-gold" />
+              <span className="absolute top-1/2 bottom-0 left-[calc(var(--col)_*_1.5_-_1px)] w-0.5 bg-gold" />
             </div>
-          ))}
-        </div>
+            <div className={'grid grid-cols-[var(--col)_var(--col)] items-start ' + PAIR_COL}>
+              <Node bn="ইসমাইল (আঃ)" kind="pair" />
+              <Node bn="ইসহাক (আঃ)" kind="branch" note="বনী ইসরাঈলের নবীগণের ধারা" />
+            </div>
+            <Gap />
+            <Node bn="আদনান" />
+            <Gap />
+            <Node bn="আব্দুল্লাহ" />
+            <Link label="পুত্র" />
+            <Node bn="মুহাম্মদ ﷺ" major />
+          </div>
+        </section>
       </div>
-    </section>
+    </>
   );
 }
