@@ -1,4 +1,5 @@
 import { useTheme } from '../state/ThemeContext';
+import { MoonIcon } from './ui/icons';
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -9,10 +10,9 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-      aria-pressed={!isDark}
-      className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border-gold bg-(--surface-2) text-gold hover:border-gold"
+      className="inline-grid size-9 flex-none cursor-pointer place-items-center rounded-full border border-line-strong text-text-2 hover:border-gold hover:text-gold"
     >
-      <span aria-hidden="true">{isDark ? '☾' : '☀'}</span>
+      <MoonIcon className="size-4" />
     </button>
   );
 }
