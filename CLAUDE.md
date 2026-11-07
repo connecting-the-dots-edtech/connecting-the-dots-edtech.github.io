@@ -103,17 +103,37 @@ shortcuts like `/` don't fire inside inputs), `src/hooks/useMediaQuery.ts`, and
 
 ### Lineage tree
 
-`/lineage` is an interactive SVG tree of the prophets, with pan and zoom. The data
-is `src/data/lineage.ts`: `LineageNode`s (type in `src/data/types.ts`) at
-hand-placed coordinates on a 2100×1040 canvas, each with a `parent` and a `link`
-evidence level (`q` Qur'an or sahih hadith, `h` historians' accounts, `g`
-generations skipped or disputed). Pure helpers (`ancestorChain`, `mainLine`,
-`childrenOf`, `edgePath`, `labelPlacement`) are in `src/lib/lineage.ts`. Pan and
-zoom are in `src/hooks/usePanZoom.ts` (drag, pinch, Ctrl/⌘+wheel, animated
-`zoomBy`/`centerOn`); selection, the details panel and the legend are in
-`src/components/LineageTree.tsx`. To add a person: add a node with `x`/`y`, a
-`parent` and a `link`, and give a `source` (nodes without one fall back to a
-default by link type). Names, notes and sources are Bangla.
+`/lineage` is an interactive SVG tree of the prophets, with pan and zoom on
+desktop and a vertical list on phones. The data is `src/data/lineage.ts`:
+`LineageNode`s (type in `src/data/types.ts`) at hand-placed coordinates on a
+2100×1040 canvas, each with a `parent` and a `link` evidence level (`q` Qur'an or
+sahih hadith, `h` historians' accounts, `g` generations skipped or disputed).
+`src/lib/lineage.ts` has the pure helpers (`ancestorChain`, `childrenOf`,
+`edgePath`, `labelPlacement`, `continuationOf`, `lineageRows`) and `mainLine`, a
+precomputed Set of the ids on the আদম → মুহাম্মদ ﷺ chain. Pan and zoom are in
+`src/hooks/usePanZoom.ts` (drag, pinch, Ctrl/⌘+wheel, animated
+`zoomBy`/`centerOn`); selection, the legend and the zoom buttons (in the bar under
+the stage, right of `Sources:`) are in `src/components/LineageTree.tsx`. The
+details body is `src/components/LineageInfo.tsx`, shared by the desktop panel
+(`lin-info`) and the phone bottom sheet (`lin-sheet`). To add a person: add a
+node with `x`/`y`, a `parent` and a `link`, and give a `source` (nodes without
+one fall back to the historians' default for `h` links, otherwise the Qur'an
+default). Names, notes and sources are Bangla.
+
+On phones (≤ 760px) there is no canvas and no `Legend` pill: `#lineage-tree`
+stays in the DOM but hidden, with no pan/zoom attached, and
+`src/components/LineageList.tsx` renders an inline legend and one row per person
+from `lineageRows()`. The line to মুহাম্মদ ﷺ runs down the left column. At each
+node the continuation (`continuationOf`: the child on the main line, else the
+largest subtree, ties to the later child) stays in the column; the other children
+are listed first, one 22px column to the right, joined by an elbow. Straight runs
+of 4+ persons (no branches, no articles, not a branch start) fold into one
+"first … last" row that expands on tap. Column offsets are literal classes for
+depths 0–3 (`LEFT`/`PAD` in `LineageList`; a deeper row throws in dev). Selecting
+opens `LineageInfo` in a fixed bottom sheet above the tab bar; chips and
+`Parent`/`Children` links expand the row's fold and scroll it into view. The
+desktop and phone views are separate components, so crossing 760px remounts them
+(the canvas starts again from the fitted view; the selection is kept).
 
 ### Content model: Markdown files + a manual map registry
 
@@ -162,7 +182,8 @@ view. `ListView` groups events by era.
 
 An external browser verification script depends on a set of DOM ids/data attributes
 (`tl-scroller`, `tl-track`, `data-curve-pt`, `era-journey`, `era-panel`,
-`lineage-tree`, `lin-svg`, `lin-info`, `lin-key`, `lin-key-btn`, `data-node`,
-`data-edge`, `data-lin`, `reader`, `search`, ...). `data-lineage` on a node is
-`main` or `branch`: on or off the আদম → মুহাম্মদ ﷺ chain. Don't rename them
-without checking for uses.
+`lineage-tree`, `lin-svg`, `lin-info`, `lin-key`, `data-node`, `data-edge`,
+`data-lin`, and on phones `lin-v`, `data-row`, `data-run` with `data-members`,
+`lin-sheet`; `reader`, `search`, ...). `data-lineage` on a node is `main` or
+`branch`: on or off the আদম → মুহাম্মদ ﷺ chain. Don't rename them without
+checking for uses.
