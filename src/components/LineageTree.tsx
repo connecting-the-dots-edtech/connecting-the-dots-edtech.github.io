@@ -1,6 +1,5 @@
 import { events } from '../data/timeline';
 import { useTimelineApp } from '../state/TimelineAppContext';
-import { PageHeader } from './ui/PageHeader';
 
 /** Main-line grid column: the middle of three on desktop, the first of two on phones. */
 const MAIN_COL = 'col-start-2 phone:col-start-1';
@@ -93,7 +92,7 @@ export function LineageTree() {
 
   return (
     <>
-      <PageHeader title="নবীগণের বংশধারা" />
+      <h1 className="sr-only">নবীগণের বংশধারা</h1>
       <div className="pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]">
         <section aria-label="নবীগণের বংশধারা" className="mx-auto max-w-280">
           <div className="mt-[22px] flex flex-wrap justify-center gap-[18px] font-bn text-[13.5px] text-muted">
