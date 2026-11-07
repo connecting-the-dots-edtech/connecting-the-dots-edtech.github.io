@@ -22,41 +22,87 @@ Vite 6/7 without verifying the build actually runs first.
 
 ## Architecture
 
-This is a single-page React + TypeScript + Tailwind CSS v4 site (Vite), an
-interactive documentary-style timeline of Islamic history. It deploys to
+This is a React + TypeScript + Tailwind CSS v4 site (Vite), an interactive
+documentary-style timeline of Islamic history, with client-side routes `/`
+(home), `/timeline`, `/eras` and `/lineage` (react-router; `public/404.html`
+handles deep links on GitHub Pages). It deploys to
 GitHub Pages as an org root page (`connecting-the-dots-edtech.github.io`),
 which is why `vite.config.ts` hardcodes `base: '/'` — not a project subpath.
 Deployment is via `.github/workflows/deploy.yml` (GitHub Actions building and
 publishing `dist/` on every push to `main`; the repo's Pages source must be
 set to "GitHub Actions" in Settings → Pages, not branch deploy).
 
-### No inline styles — precomputed Tailwind classes for data-driven values
+### No inline styles — literal Tailwind classes, tokens for colour
 
-Every visual property is a Tailwind utility class; there are no JSX `style={{}}`
-props anywhere in `src/`. Tailwind's compiler only picks up class names that
-appear as literal, contiguous text in a scanned source file — it does not
-execute JS, so a class built by string interpolation or `.replace()` (e.g.
-`` `bg-[${color}]` ``) silently produces no CSS. Because several UI elements
-are colored/sized per content item (era accent colors, per-zoom-level track
-widths, the hero starfield), those values are precomputed as literal class
-strings ahead of time rather than computed at render time:
+There are no JSX `style={{}}` props anywhere in `src/`. Tailwind's compiler
+only picks up class names that appear as literal, contiguous text in a scanned
+source file — it does not execute JS, so a class built by interpolation or
+`.replace()` (e.g. `` `bg-[${color}]` ``) silently produces no CSS. Joining
+*literal* class strings is fine; building one from a value is not.
 
-- `src/data/eraStyles.ts` — one object per era id with literal classes like
-  `'bg-[#181C2E]'`, `'text-[#8FB4E6]'`, plus a `min-w-[Npx]` class for each of
-  the 4 zoom levels (`src/data/eraStyles.ts`'s `eraWidthClasses`). When adding
-  a new era or changing zoom behavior, add/update entries here — do not try
-  to compute a Tailwind class from a hex value in a component.
-- `src/data/stars.ts` — the hero's 40 twinkling stars are a fixed, pre-baked
-  list of literal position/size/timing classes (not `Math.random()` at
-  runtime), for the same reason.
-- `src/data/timeline.ts`'s `lineage` array carries `sizeClass` / `dotClass` /
-  `borderClass` literal Tailwind classes directly, not raw color values.
+- **Colour tokens** live in `src/index.css` as CSS custom properties (`--bg`,
+  `--surface`, `--text`, `--muted`, `--gold`, `--line`, `--e-<era>`, ...). Light
+  is the `:root` default; dark applies via `prefers-color-scheme` (unless
+  `data-theme="light"`) or `data-theme="dark"`. A `@theme inline` block exposes
+  them as utilities (`bg-surface`, `text-muted`, `text-gold`, `border-line`, ...).
+  All text colours come from tokens.
+- **Per-era colour:** `src/data/eraStyles.ts` exports `eraVar[eraId]`, literal
+  arbitrary-property classes (`[--e:var(--e-cosmos)]`). Put it on an element or
+  ancestor, then use `text-e`, `bg-e`, `stroke-e`, `fill-e`, or `var(--e)` in
+  arbitrary values. For border colour use `border-(--e)` — Tailwind's `border-e`
+  is the inline-end border-width utility, not a colour. To add an era: add its
+  `--e-<id>` tokens (light and dark) in `index.css` and an `eraVar` entry.
+- **No zoom:** the timeline has no zoom levels or per-zoom width classes. Era
+  bands size from their content.
+- **Starfield:** `src/data/stars.ts` is a fixed, pre-baked list of literal
+  position/size/timing classes (not `Math.random()` at runtime).
+- **Breakpoints:** custom variants `phone:` (max-width 760px) and `tablet:`
+  (max-width 960px), defined in `index.css`. Desktop-first: a base class plus a
+  `phone:` override.
+- **Imperative style exceptions:** DOM style is mutated directly via a ref inside
+  `useEffect`/`useLayoutEffect` only for continuous runtime values: the timeline
+  curve's clip geometry (`useConnectingLine`, via `CurveSvg`'s clip rect), the
+  minimap's segment flex and viewport box (`ScrubberMinimap`), the reader's
+  progress-bar width (`EventModal`), and the drag-scroll cursor
+  (`useDragScroll`). Follow the pattern in `src/hooks/useDragScroll.ts`.
 
-The only exceptions are two hooks that mutate DOM style imperatively via a
-ref inside a `useEffect` (`src/hooks/useParallax.ts` for scroll-linked
-parallax translation, `src/hooks/useDragScroll.ts` for drag-to-scroll cursor
-feedback) — these are continuous, runtime-only values that cannot be
-expressed as a finite set of classes, and they're not JSX `style` props.
+### Language split
+
+Bangla carries the content: headings, era names and spans, period labels,
+chapter labels (`অধ্যায় ০৭`), counts (`৫টি ঘটনা`) and lineage text, always with
+Bengali digits (`bnDigits` / `pad2` in `src/lib/format.ts`). English UI chrome —
+nav, footer, buttons, interface labels, aria-labels — is Hanken Grotesk (`font-ui`)
+with Latin digits, and English-only containers (nav, footer, tab bar, view switch)
+carry `lang="en"`. `titleEn` and era `en` exist in the data but are never
+rendered. No uppercase or letter-spacing on Bangla. Fonts: `font-bn-display`
+(Tiro Bangla) for Bangla titles, `font-bn` (Hind Siliguri) for Bangla body,
+`font-ui` for English UI, `font-lat` (Marcellus) for the wordmark only, `font-ar`
+(Amiri, then Traditional Arabic) for Arabic. No text under 12px; italic is never
+synthesised. Motion is limited to the starfield twinkle, home emblem rotation,
+the home thread's travelling light, the timeline curve draw-in, card hover lift,
+the Eras panel swap fade and the reader slide-in; all of it respects
+`prefers-reduced-motion`: CSS via the global rule in `index.css` (plus
+`motion-reduce:scroll-auto` on the timeline scroller), and JS smooth scrolls pass
+`scrollBehavior()` from `src/lib/motion.ts` (`'auto'` under reduced motion).
+
+### Shared UI
+
+`src/components/ui/` holds the reusable pieces: `EventCard` (timeline and
+feature variants), `SectionHeading`, `PageHeader`, `Emblem`, `CurveSvg` and the
+icon set in `icons.tsx`. The timeline curve is computed in `src/lib/curve.ts`
+(cosine segments through measured `[data-curve-pt]` anchors) and driven by
+`src/hooks/useCurve.ts` (measuring) and `src/hooks/useConnectingLine.ts`
+(draw-in and scroll catch-up). Also shared: `src/components/EraJourney.tsx` (the
+home page's eight-era journey), `src/lib/format.ts` (Bangla digits, reading time,
+excerpts, source splitting), `src/lib/keys.ts` (`isTypingTarget`, so global
+shortcuts like `/` don't fire inside inputs), `src/hooks/useMediaQuery.ts`, and
+`src/components/navLinks.ts` (the nav links shared by Header and TabBar).
+
+### Lineage tree
+
+The tree on `/lineage` is hardcoded in `src/components/LineageTree.tsx` (centred
+main line, Ishaq as a side branch, generation-gap labels). There is no lineage
+data in `src/data/`.
 
 ### Content model: Markdown files + a manual map registry
 
@@ -71,28 +117,38 @@ this is a manual map by design (not an automatic `import.meta.glob` folder
 scan), so adding an event means (1) add the `.md` file, (2) add one
 import + map entry in `index.ts`. `src/data/timeline.ts` re-exports `events`
 from that registry alongside the structural data that rarely changes: `eras`,
-`lineage`, `generalSources`, `categories`, and `eventMatchesCategory` (the
-search category filter logic).
+`categories`, and `eventMatchesCategory` (the search category filter logic).
 
 ### Shared UI state via context, not prop drilling
 
 `src/state/TimelineAppContext.tsx` (`TimelineAppProvider` / `useTimelineApp`)
 is the single source of truth for state that's read/written from multiple,
-non-adjacent parts of the tree: current view mode (timeline/list/map), zoom
-level, the timeline track's scroll ref plus `scrollToEra()`, the quick-look
-modal's open event, the currently displayed Event Detail page (`detailEvent`
-— separate from the quick-look modal so "Read full event" can swap the
-detail section's content without navigating), and search overlay state
-(open/query/category/results). `App.tsx` wraps the whole page in the
-provider; components call `useTimelineApp()` directly rather than receiving
-these as props.
+non-adjacent parts of the tree: current view mode (timeline/list), the
+timeline track's scroll ref plus `scrollToEra()`, the Eras page's
+`selectedEra` / `setSelectedEra`, the quick-look/reader modal's open event
+(`EventModal`), and search state (open/query/category/results, plus
+`eventMatchesQuery` and per-category `categoryCounts`). `App.tsx` wraps the
+page in the provider; components call `useTimelineApp()` directly rather than
+receiving these as props.
+
+`src/state/ThemeContext.tsx` holds the theme. It follows the OS preference
+until the visitor toggles; only then is the choice saved to `localStorage`
+(`theme`). `index.html` sets `data-theme` before first paint. The reader's text
+size is saved separately in `localStorage` (`ctd-size`).
 
 ### Timeline Explorer
 
-`src/components/TimelineExplorer/` has three interchangeable views over the
-same `events`/`eras` data (`TimelineView`, `ListView`, `MapView`), switched
-via `useTimelineApp().view`. Only `TimelineView` supports zoom (era band
-widths scale via `eraWidthClasses`) and drag-to-scrub (`useDragScroll` on the
-shared `trackRef`); `ScrubberMinimap` and `EraGrid` both jump into the
-timeline via `scrollToEra()`, which forces `view` back to `'timeline'` before
-scrolling, since era `data-era` bands only exist in the DOM in that view.
+`src/components/TimelineExplorer/` has two interchangeable views over the same
+`events`/`eras` data (`TimelineView`, `ListView`), switched via `ViewSwitch` /
+`useTimelineApp().view`. `TimelineView` is a horizontally scrolling track
+(vertical on phones) with a cosine curve through the event anchors, arrow
+buttons, a hint row and drag-to-scrub (`useDragScroll` on the shared
+`trackRef`). `ScrubberMinimap` and the Eras panel jump into the timeline via
+`scrollToEra()`, which forces `view` back to `'timeline'` and navigates to
+`/timeline` before scrolling, since era `data-era` bands only exist in that
+view. `ListView` groups events by era.
+
+An external browser verification script depends on a set of DOM ids/data attributes
+(`tl-scroller`, `tl-track`, `data-curve-pt`, `era-journey`, `era-panel`,
+`lineage-tree`, `reader`, `search`, ...). Don't rename them without checking
+for uses.

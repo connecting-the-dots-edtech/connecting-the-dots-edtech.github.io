@@ -4,6 +4,7 @@ import { EraPanel } from '../components/EraPanel';
 import { PageHeader } from '../components/ui/PageHeader';
 import { eras } from '../data/timeline';
 import { isTypingTarget } from '../lib/keys';
+import { scrollBehavior } from '../lib/motion';
 import { useTimelineApp } from '../state/TimelineAppContext';
 
 export function ErasPage() {
@@ -19,7 +20,7 @@ export function ErasPage() {
     const journey = document.getElementById('era-journey');
     if (!journey) return;
     const top = journey.getBoundingClientRect().top;
-    if (top < 0) window.scrollBy({ top: top - 90, behavior: 'smooth' });
+    if (top < 0) window.scrollBy({ top: top - 90, behavior: scrollBehavior() });
   }, [selectedEra]);
 
   useEffect(() => {

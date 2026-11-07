@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 
+/** Fraction of the remaining distance closed per 60fps frame; scaled by elapsed time. */
 const CATCH_UP = 0.03;
+const FRAME_MS = 1000 / 60;
 
 const clamp = (v: number, max: number) => Math.max(0, Math.min(max, v));
 
@@ -32,6 +34,8 @@ export function useConnectingLine(
     const scroller = scrollerRef.current;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     let raf = 0;
+    let last = 0;
+    let alive = true;
 
     // Unclamped edge of the visible area, in track coordinates.
     const edge = () => {
@@ -48,14 +52,18 @@ export function useConnectingLine(
       rect.setAttribute('height', String(vertical ? cur.current : height));
     };
 
-    const tick = () => {
+    const tick = (now: number) => {
       raf = 0;
+      const dt = last ? Math.min(100, now - last) : FRAME_MS;
+      last = now;
+      const k = 1 - Math.pow(1 - CATCH_UP, dt / FRAME_MS);
       const t = target();
-      let c = reduced.matches ? t : cur.current + (t - cur.current) * CATCH_UP;
+      let c = reduced.matches ? t : cur.current + (t - cur.current) * k;
       if (Math.abs(t - c) < 0.5) c = t;
       cur.current = c;
       apply();
       if (c !== t) raf = requestAnimationFrame(tick);
+      else last = 0;
     };
     const kick = () => {
       if (!raf) raf = requestAnimationFrame(tick);
@@ -76,7 +84,18 @@ export function useConnectingLine(
     scrollSource?.addEventListener('scroll', kick, { passive: true });
     window.addEventListener('resize', kick);
 
+    // Layout can settle after mount (scrollbars, fonts) without a scroll or
+    // window resize, which would leave the clip at a stale edge.
+    const ro = new ResizeObserver(kick);
+    ro.observe(track);
+    if (scroller) ro.observe(scroller);
+    void document.fonts?.ready.then(() => {
+      if (alive) kick();
+    });
+
     return () => {
+      alive = false;
+      ro.disconnect();
       cancelAnimationFrame(raf);
       scrollSource?.removeEventListener('scroll', kick);
       window.removeEventListener('resize', kick);

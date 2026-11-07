@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { scrollBehavior } from '../lib/motion';
 import { events as allEvents, categories, eventMatchesCategory } from '../data/timeline';
 import type { CategoryKey, EraId, TimelineEvent, ViewMode } from '../data/types';
 
@@ -60,10 +61,10 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
         const scroller = document.getElementById('tl-scroller');
         if (!band || !scroller) return;
         if (window.matchMedia('(max-width: 760px)').matches) {
-          band.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          band.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
         } else {
           scroller.scrollTo({ left: band.offsetLeft - 16 });
-          scroller.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          scroller.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
         }
       }, 80);
     },

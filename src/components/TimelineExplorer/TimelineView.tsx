@@ -17,7 +17,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from '../ui/icons';
    card above / below. Phone (≤760px): a vertical list, the curve snakes down
    the left side (dots alternate 14px / 36px), cards to the right of the dot. */
 const SCROLLER =
-  'scroll-smooth overflow-x-auto overflow-y-hidden border-y border-line bg-linear-180 from-[color-mix(in_srgb,var(--raised)_60%,var(--surface))] to-surface pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))] [scrollbar-width:thin] phone:overflow-visible phone:border-0 phone:bg-none phone:bg-transparent';
+  'scroll-smooth motion-reduce:scroll-auto overflow-x-auto overflow-y-hidden border-y border-line bg-linear-180 from-[color-mix(in_srgb,var(--raised)_60%,var(--surface))] to-surface pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))] [scrollbar-width:thin] phone:overflow-visible phone:border-0 phone:bg-none phone:bg-transparent';
 
 const CAP = 'absolute top-1/2 z-3 -mt-1.5 size-3 rounded-full border-2 border-gold bg-surface phone:hidden';
 
