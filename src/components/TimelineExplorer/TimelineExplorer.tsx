@@ -1,52 +1,52 @@
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useTimelineApp } from '../../state/TimelineAppContext';
 import { TimelineView } from './TimelineView';
 import { ListView } from './ListView';
 import { ScrubberMinimap } from './ScrubberMinimap';
-import type { ViewMode } from '../../data/types';
+import { ViewSwitch } from './ViewSwitch';
 
-const VIEWS: { id: ViewMode; label: string }[] = [
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'list', label: 'List' },
-];
+const GUTTER = 'pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]';
 
 export function TimelineExplorer() {
-  const { view, setView } = useTimelineApp();
+  const { view } = useTimelineApp();
+  const timeline = view === 'timeline';
+  const phone = useMediaQuery('(max-width: 760px)');
+  // Exactly one ViewSwitch is mounted at a time: above the track on phones and in
+  // list view, beside the minimap otherwise.
+  const topSwitch = !timeline || phone;
 
   return (
-    <section id="timeline" className="relative pb-17.5">
-      {/* The timeline itself is the first thing on screen — no heading or
-          controls above it — so opening this page shows the rail full-height
-          without scrolling. The view toggle lives below it. */}
-      {view === 'timeline' && (
+    <section id="timeline" className="relative pb-10">
+      {topSwitch && (
+        <div className={'flex justify-center pt-6 ' + GUTTER}>
+          <ViewSwitch />
+        </div>
+      )}
+
+      {timeline ? (
         <>
           <TimelineView />
-          <ScrubberMinimap />
-        </>
-      )}
-      {view === 'list' && <ListView />}
-
-      <div className="mx-auto mt-10 flex max-w-310 justify-center px-5 sm:px-10">
-        <div className="flex flex-col items-center gap-3.5">
-          <div className="inline-flex rounded-full border border-border-strong bg-(--surface-2) p-1" role="tablist" aria-label="Timeline view mode">
-            {VIEWS.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                role="tab"
-                aria-selected={view === v.id}
-                onClick={() => setView(v.id)}
-                className={
-                  view === v.id
-                    ? 'rounded-full bg-gold-fill px-4.5 py-2 text-[13px] text-[#12121A]'
-                    : 'rounded-full px-4.5 py-2 text-[13px] text-dim'
-                }
+          <div className={GUTTER}>
+            <div className="mx-auto max-w-[1120px]">
+              <div className="mt-[14px] flex items-center gap-4 phone:hidden">
+                <ScrubberMinimap />
+                {!topSwitch && <ViewSwitch />}
+              </div>
+              <div
+                id="tl-hints"
+                lang="en"
+                className="mt-2 flex justify-between font-ui text-[13px] text-muted phone:hidden"
               >
-                {v.label}
-              </button>
-            ))}
+                <span>← Before time</span>
+                <span>Drag or use the arrows</span>
+                <span>Present →</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      ) : (
+        <ListView />
+      )}
     </section>
   );
 }
