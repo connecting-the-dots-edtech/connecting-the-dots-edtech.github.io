@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { EraJourney } from '../components/EraJourney';
 import { EraPanel } from '../components/EraPanel';
-import { PageHeader } from '../components/ui/PageHeader';
 import { eras } from '../data/timeline';
 import { isPlainArrow, isTypingTarget } from '../lib/keys';
 import { scrollBehavior } from '../lib/motion';
@@ -39,9 +38,9 @@ export function ErasPage() {
 
   return (
     <>
-      <PageHeader title="যুগে যুগে" />
+      <h1 className="sr-only">যুগে যুগে</h1>
       <div className="pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]">
-        <section aria-label="Choose an era" className="mx-auto max-w-280 pt-1 pb-14">
+        <section aria-label="Choose an era" className="mx-auto max-w-280 pt-8 pb-14">
           <EraJourney selectedId={selectedEra} onSelect={setSelectedEra} />
           <EraPanel id={selectedEra} animate={changed} />
         </section>

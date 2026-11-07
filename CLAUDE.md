@@ -63,8 +63,10 @@ source file — it does not execute JS, so a class built by interpolation or
   `useEffect`/`useLayoutEffect` only for continuous runtime values: the timeline
   curve's clip geometry (`useConnectingLine`, via `CurveSvg`'s clip rect), the
   minimap's segment flex and viewport box (`ScrubberMinimap`), the reader's
-  progress-bar width (`EventModal`), and the drag-scroll cursor
-  (`useDragScroll`). Follow the pattern in `src/hooks/useDragScroll.ts`.
+  progress-bar width (`EventModal`), the drag-scroll cursor
+  (`useDragScroll`), and the lineage SVG `viewBox` and the stage's
+  `data-dragging` cursor flag (`usePanZoom`). Follow the pattern in
+  `src/hooks/useDragScroll.ts`.
 
 ### Language split
 
@@ -77,10 +79,14 @@ carry `lang="en"`. `titleEn` and era `en` exist in the data but are never
 rendered. No uppercase or letter-spacing on Bangla. Fonts: `font-bn-display`
 (Tiro Bangla) for Bangla titles, `font-bn` (Hind Siliguri) for Bangla body,
 `font-ui` for English UI, `font-lat` (Marcellus) for the wordmark only, `font-ar`
-(Amiri, then Traditional Arabic) for Arabic. No text under 12px; italic is never
+(Amiri, then Traditional Arabic) for Arabic. No text under 12px, except the lineage SVG, which scales: at the
+fitted desktop view (1440×900) prophet labels are ≥ 14px and person labels ≥ 11px (person and
+book labels are secondary and become readable on zoom). Italic is never
 synthesised. Motion is limited to the starfield twinkle, home emblem rotation,
 the home thread's travelling light, the timeline curve draw-in, card hover lift,
-the Eras panel swap fade and the reader slide-in; all of it respects
+the Eras panel swap fade, the reader slide-in and the lineage view tween (380ms,
+instant under reduced motion) and the lineage dim fade (250ms opacity on nodes,
+edges and phone rows outside the selected chain); all of it respects
 `prefers-reduced-motion`: CSS via the global rule in `index.css` (plus
 `motion-reduce:scroll-auto` on the timeline scroller), and JS smooth scrolls pass
 `scrollBehavior()` from `src/lib/motion.ts` (`'auto'` under reduced motion).
@@ -88,7 +94,7 @@ the Eras panel swap fade and the reader slide-in; all of it respects
 ### Shared UI
 
 `src/components/ui/` holds the reusable pieces: `EventCard` (timeline and
-feature variants), `SectionHeading`, `PageHeader`, `Emblem`, `CurveSvg` and the
+feature variants), `SectionHeading`, `Emblem`, `CurveSvg` and the
 icon set in `icons.tsx`. The timeline curve is computed in `src/lib/curve.ts`
 (cosine segments through measured `[data-curve-pt]` anchors) and driven by
 `src/hooks/useCurve.ts` (measuring) and `src/hooks/useConnectingLine.ts`
@@ -100,9 +106,41 @@ shortcuts like `/` don't fire inside inputs), `src/hooks/useMediaQuery.ts`, and
 
 ### Lineage tree
 
-The tree on `/lineage` is hardcoded in `src/components/LineageTree.tsx` (centred
-main line, Ishaq as a side branch, generation-gap labels). There is no lineage
-data in `src/data/`.
+`/lineage` is an interactive SVG tree of the prophets, with pan and zoom on
+desktop and a vertical list on phones. The data is `src/data/lineage.ts`:
+`LineageNode`s (type in `src/data/types.ts`) at hand-placed coordinates on a
+2100×1040 canvas, each with a `parent` and a `link` evidence level (`q` Qur'an or
+sahih hadith, `h` historians' accounts, `g` generations skipped or disputed).
+`src/lib/lineage.ts` has the pure helpers (`ancestorChain`, `childrenOf`,
+`edgePath`, `labelPlacement`, `continuationOf`, `lineageRows`) and `mainLine`, a
+precomputed Set of the ids on the আদম → মুহাম্মদ ﷺ chain. Pan and zoom are in
+`src/hooks/usePanZoom.ts` (drag, pinch, Ctrl/⌘+wheel, animated
+`zoomBy`/`centerOn`); selection, the legend and the zoom buttons (in the bar under
+the stage, right of `Sources:`) are in `src/components/LineageTree.tsx`. The
+details body is `src/components/LineageInfo.tsx`, shared by the desktop panel
+(`lin-info`) and the phone bottom sheet (`lin-sheet`). To add a person: add a
+node with `x`/`y`, a `parent` and a `link`, and give a `source` (nodes without
+one fall back to the historians' default for `h` links, otherwise the Qur'an
+default). Roots are the exception: `adam` is the root, and `dhulkifl` has no
+parent and sets `unknown: true` (the tree shows "?", the panel says the lineage
+isn't known). Names, notes and sources are Bangla.
+
+On phones (≤ 760px) there is no canvas and no `Legend` pill: `#lineage-tree`
+stays in the DOM but hidden, holding a static copy of the tree (`#lin-svg`,
+`data-node`, `data-edge`, `data-lineage`) with no pan/zoom attached, so the
+desktop hooks exist at every width, and
+`src/components/LineageList.tsx` renders an inline legend and one row per person
+from `lineageRows()`. The line to মুহাম্মদ ﷺ runs down the left column. At each
+node the continuation (`continuationOf`: the child on the main line, else the
+largest subtree, ties to the later child) stays in the column; the other children
+are listed first, one 22px column to the right, joined by an elbow. Straight runs
+of 4+ persons (no branches, no articles, not a branch start) fold into one
+"first … last" row that expands on tap. Column offsets are literal classes for
+depths 0–3 (`LEFT`/`PAD` in `LineageList`; a deeper row throws in dev). Selecting
+opens `LineageInfo` in a fixed bottom sheet above the tab bar; chips and
+`Parent`/`Children` links expand the row's fold and scroll it into view. The
+desktop and phone views are separate components, so crossing 760px remounts them
+(the canvas starts again from the fitted view; the selection is kept).
 
 ### Content model: Markdown files + a manual map registry
 
@@ -151,5 +189,8 @@ view. `ListView` groups events by era.
 
 An external browser verification script depends on a set of DOM ids/data attributes
 (`tl-scroller`, `tl-track`, `data-curve-pt`, `era-journey`, `era-panel`,
-`lineage-tree`, `reader`, `search`, ...). Don't rename them without checking
-for uses.
+`lineage-tree`, `lin-svg`, `lin-info`, `lin-key` (desktop only; absent while a node is selected), `data-node`,
+`data-edge`, `data-lin`, and on phones `lin-v`, `data-row`, `data-run` with `data-members`,
+`lin-sheet`; `reader`, `search`, ...). `data-lineage` on a node is `main` or
+`branch`: on or off the আদম → মুহাম্মদ ﷺ chain. Don't rename them without
+checking for uses.

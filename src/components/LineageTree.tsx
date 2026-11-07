@@ -1,141 +1,390 @@
-import { events } from '../data/timeline';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FocusEvent, ReactNode, Ref } from 'react';
+import { LINEAGE_W, lineage } from '../data/lineage';
+import type { LineageNode } from '../data/types';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { usePanZoom } from '../hooks/usePanZoom';
+import type { ViewBox } from '../hooks/usePanZoom';
+import { ancestorChain, edgePath, labelPlacement, lineageById, lineageProphets, mainLine, nodeRadius } from '../lib/lineage';
 import { useTimelineApp } from '../state/TimelineAppContext';
-import { PageHeader } from './ui/PageHeader';
+import { LineageInfo } from './LineageInfo';
+import { LegendEntries, LineageList } from './LineageList';
+import type { LineageListHandle } from './LineageList';
 
-/** Main-line grid column: the middle of three on desktop, the first of two on phones. */
-const MAIN_COL = 'col-start-2 phone:col-start-1';
-/** Two-column span for the Ibrahim split and the Ismail / Ishaq pair. */
-const PAIR_COL = 'col-span-2 col-start-2 phone:col-start-1';
+/** Fitted view: framed to the drawn content (labels included), so names stay readable at 1440×900. */
+const FIT: ViewBox = { x: 10, y: 34, w: 2080, h: 1000 };
+/** The details containers: desktop panel and phone sheet. */
+const PANELS = '#lin-info, #lin-sheet';
+const PAD_X = 'pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]';
+const TOOL_BTN =
+  'inline-grid size-9 flex-none cursor-pointer place-items-center rounded-full border border-line-strong text-text-2 hover:border-gold hover:text-gold';
 
-type NodeProps = {
-  bn: string;
-  /** main-line node (default), the pair's Ismail, or Ishaq's side branch */
-  kind?: 'main' | 'pair' | 'branch';
-  major?: boolean;
-  first?: boolean;
-  note?: string;
-  onRead?: () => void;
-};
+const EDGE_CLASS = {
+  q: 'fill-none stroke-gold [stroke-width:2.4] [stroke-linecap:round]',
+  h: 'fill-none stroke-gold [stroke-width:1.4] [stroke-opacity:0.55] [stroke-linecap:round]',
+  g: 'fill-none stroke-gold [stroke-width:1.9] [stroke-dasharray:1_6] [stroke-linecap:round]',
+} as const;
 
-const NODE_BASE =
-  'relative z-2 grid min-w-[190px] justify-items-center gap-0.5 justify-self-center rounded-[14px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--gold)_8%,var(--surface)),var(--surface))] px-6 py-3 text-center phone:max-w-[168px] phone:min-w-0 phone:px-3.5 phone:py-2.5';
-const DIAMOND =
-  "before:absolute before:-top-1.5 before:left-1/2 before:-ml-[5px] before:size-2.5 before:rotate-45 before:content-['']";
-
-function Node({ bn, kind = 'main', major, first, note, onRead }: NodeProps) {
-  const branch = kind === 'branch';
-  const border = branch ? 'border-[color-mix(in_srgb,var(--e-later)_60%,transparent)]' : major ? 'border-gold' : 'border-line-strong';
-  const shadow = major ? 'shadow-[var(--shadow),0_0_26px_var(--glow)]' : 'shadow-[var(--shadow)]';
-  const diamond = first
-    ? ''
-    : branch
-      ? DIAMOND + ' before:bg-[var(--e-later)] before:shadow-[0_0_10px_var(--e-later)]'
-      : DIAMOND + ' before:bg-gold before:shadow-[0_0_10px_var(--gold)]';
-  const col = kind === 'main' ? MAIN_COL : branch ? 'col-start-2 row-start-1' : 'row-start-1';
+function ZoomIcon({ d }: { d: string }) {
   return (
-    <div
-      data-lineage={branch ? 'branch' : 'main'}
-      className={[NODE_BASE, border, shadow, diamond, col].join(' ')}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="size-4" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
+
+function TreeNode({ n, dim, selected, onActivate }: { n: LineageNode; dim: boolean; selected: boolean; onActivate: (id: string) => void }) {
+  const r = nodeRadius(n);
+  const big = n.kind === 'u';
+  const person = n.kind === 'n';
+  const lp = labelPlacement(n);
+  return (
+    <g
+      data-node={n.id}
+      data-lineage={mainLine.has(n.id) ? 'main' : 'branch'}
+      transform={`translate(${n.x} ${n.y})`}
+      tabIndex={0}
+      role="button"
+      aria-label={n.bn}
+      aria-pressed={selected}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onActivate(n.id);
+        }
+      }}
+      className={'group cursor-pointer outline-none transition-opacity duration-250 ' + (dim ? 'opacity-20' : '')}
     >
-      <span
+      {big && (
+        <>
+          <circle r={r + 7} className="fill-none stroke-[color-mix(in_srgb,var(--gold)_35%,transparent)] [stroke-width:3]" />
+          <circle r={r + 4} className="fill-none stroke-gold [stroke-width:1.4]" />
+        </>
+      )}
+      <circle
+        r={r}
         className={
-          'font-bn-display leading-[1.3] text-text ' +
-          (major ? 'text-[25px] phone:text-[21px]' : 'text-[22px] phone:text-[19px]')
+          (person ? 'fill-surface stroke-muted [stroke-width:1.6]' : 'fill-gold stroke-surface [stroke-width:3]') +
+          ' group-focus-visible:stroke-gold-2 group-focus-visible:[stroke-width:4]' +
+          (selected ? ' drop-shadow-[0_0_7px_var(--gold)]' : '')
+        }
+      />
+      <text
+        x={lp.x}
+        y={lp.y}
+        textAnchor={lp.anchor}
+        className={
+          (person ? 'fill-text-2 font-bn text-[17px]' : 'fill-text font-bn-display text-[22px]') +
+          ' group-hover:fill-gold group-focus-visible:fill-gold'
         }
       >
-        {bn}
-      </span>
-      {note && <span className="mt-1 max-w-[200px] font-bn text-[13.5px] text-muted">{note}</span>}
-      {onRead && (
-        <button
-          type="button"
-          lang="en"
-          onClick={onRead}
-          className="mt-1.5 cursor-pointer font-ui text-[13px] font-semibold text-gold"
-        >
-          Read →
-        </button>
+        {n.bn}
+      </text>
+      {n.book && (
+        <text x={lp.x} y={n.label === 't' ? lp.y - 21 : lp.y + 21} textAnchor={lp.anchor} className="fill-gold font-bn text-[15px]">
+          {n.book}
+        </text>
       )}
-    </div>
+      {n.unknown && (
+        <text x={r + 8} y={-r} className="fill-muted font-ui text-[13px] font-semibold">
+          ?
+        </text>
+      )}
+    </g>
   );
 }
 
-/** A direct parent-to-child link: solid gold line with an optional side label. */
-function Link({ label }: { label?: string }) {
+/** The whole tree: edges behind nodes. The viewBox is driven by `usePanZoom` on desktop. */
+function TreeSvg({
+  svgRef,
+  chain,
+  selected,
+  onActivate,
+}: {
+  svgRef?: Ref<SVGSVGElement>;
+  chain: Set<string> | null;
+  selected: string | null;
+  onActivate: (id: string) => void;
+}) {
   return (
-    <div className={'relative h-[34px] w-0.5 justify-self-center bg-gold ' + MAIN_COL}>
-      {label && (
-        <span className="absolute left-4 mt-1.5 font-bn text-[13px] whitespace-nowrap text-muted phone:text-[12.5px]">{label}</span>
-      )}
-    </div>
-  );
-}
-
-/** Many generations in between: dotted gold line labelled "বহু প্রজন্ম". */
-function Gap() {
-  return (
-    <div
-      className={
-        'relative h-16 w-0.5 justify-self-center bg-[repeating-linear-gradient(180deg,var(--gold)_0_3px,transparent_3px_8px)] ' +
-        MAIN_COL
-      }
+    <svg
+      id="lin-svg"
+      ref={svgRef}
+      viewBox={`${FIT.x} ${FIT.y} ${FIT.w} ${FIT.h}`}
+      preserveAspectRatio="xMidYMid meet"
+      aria-label="আদম (আঃ) থেকে মুহাম্মদ ﷺ পর্যন্ত নবীগণের বংশবৃক্ষ"
+      className="block size-full"
     >
-      <span className="absolute top-1/2 left-4 -translate-y-1/2 font-bn text-[13.5px] whitespace-nowrap text-muted phone:text-[12.5px]">
-        বহু প্রজন্ম
-      </span>
+      {lineage
+        .filter((n) => n.parent && n.link)
+        .map((n) => (
+          <path
+            key={n.id}
+            data-edge={n.id}
+            d={edgePath(lineageById[n.parent!], n)}
+            className={EDGE_CLASS[n.link!] + ' transition-opacity duration-250' + (chain && !chain.has(n.id) ? ' opacity-20' : '')}
+          />
+        ))}
+      {lineage.map((n) => (
+        <TreeNode key={n.id} n={n} dim={!!chain && !chain.has(n.id)} selected={selected === n.id} onActivate={onActivate} />
+      ))}
+    </svg>
+  );
+}
+
+function Chips({ selected, onPick }: { selected: string | null; onPick: (id: string) => void }) {
+  return (
+    <div className={PAD_X}>
+      <div className="mx-auto flex max-w-280 items-center gap-4 pt-3.5 pb-3">
+        <div role="group" aria-label="Prophets" className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:thin]">
+          {lineageProphets.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              data-lin={p.id}
+              aria-pressed={selected === p.id}
+              onClick={() => onPick(p.id)}
+              className="h-8 flex-none cursor-pointer rounded-full border border-line-strong bg-surface px-3 font-bn text-sm whitespace-nowrap text-text-2 hover:border-gold hover:text-text aria-pressed:border-gold-fill aria-pressed:bg-gold-fill aria-pressed:text-on-gold"
+            >
+              {p.bn}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
+  );
+}
+
+/** The bar under the tree: `Sources:` on the left, taking the free width; `tools` (desktop zoom buttons) on the right. */
+function BottomBar({ tools }: { tools?: ReactNode }) {
+  return (
+    <div className={PAD_X}>
+      <div className="mx-auto flex max-w-280 items-start gap-4 pt-3 pb-2">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-x-2.5 gap-y-1 text-[13px] text-muted">
+          <b lang="en" className="font-ui font-semibold text-text-2">
+            Sources:
+          </b>
+          <span className="font-bn">
+            আল-কুরআন · সহীহ বুখারী · ইবনে কাসীর (কাসাসুল আম্বিয়া, তাফসীর, আল-বিদায়া ওয়ান নিহায়া) · ইবনে ইসহাক (ইবনে হিশামের বর্ণনায়) · ইবনুল জাওযী (আল-মুনতাযাম) ·
+            আল-হাকিম (আল-মুসতাদরাক)
+          </span>
+        </div>
+        {tools}
+      </div>
+    </div>
+  );
+}
+
+interface ViewProps {
+  selected: string | null;
+  chain: Set<string> | null;
+  /** select a node (or clear with null), remembering what opened the details */
+  select: (id: string | null) => void;
+  /** close the details and return focus; `pointer`: closed by a click or tap, so focusing must not scroll */
+  close: (pointer: boolean) => void;
+}
+
+/**
+ * Closing the details: focus goes back to what opened them, else to the node's chip, node or row.
+ * Focus that already sits elsewhere (not in the details, not lost to <body>) is left alone.
+ */
+function returnFocus(id: string, opener: Element | null, pointer: boolean) {
+  const a = document.activeElement;
+  if (a && a !== document.body && !a.closest(PANELS)) return;
+  const tries = [
+    opener,
+    document.querySelector(`[data-lin="${id}"]`),
+    document.querySelector(`#lineage-tree:not([hidden]) [data-node="${id}"]`),
+    document.querySelector(`#lin-v [data-row="${id}"] button`),
+  ];
+  for (const el of tries) {
+    if (!(el instanceof HTMLElement || el instanceof SVGElement) || !el.isConnected) continue;
+    el.focus({ preventScroll: pointer });
+    if (document.activeElement === el) return;
+  }
+}
+
+/** Desktop and tablet: the pan/zoom canvas, legend card, details panel and zoom buttons under the stage. */
+function DesktopLineage({ selected, chain, select, close }: ViewProps) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const { animateTo, zoomBy, centerOn } = usePanZoom(stageRef, svgRef, {
+    maxW: LINEAGE_W + 300,
+    ignore: '#lin-info, #lin-key',
+    initial: () => FIT,
+    onTap: (target) => {
+      const id = target.closest<SVGGElement>('[data-node]')?.dataset.node;
+      select(id ?? null);
+    },
+  });
+
+  /** Select and bring into view (chips, Parent/Children links, keyboard). */
+  const focusNode = useCallback(
+    (id: string) => {
+      const n = lineageById[id];
+      if (!n) return;
+      select(id);
+      centerOn(n.x, n.y, 1000);
+    },
+    [centerOn, select],
+  );
+
+  /** A node reached by keyboard while off-screen (or under the panel) pans into view, at the same zoom. */
+  const keepInView = (e: FocusEvent<HTMLDivElement>) => {
+    const g = (e.target as Element).closest<SVGGElement>('[data-node]');
+    const n = g ? lineageById[g.dataset.node ?? ''] : undefined;
+    const st = stageRef.current;
+    if (!g || !n || !st || !g.matches(':focus-visible')) return;
+    const r = g.getBoundingClientRect();
+    const s = st.getBoundingClientRect();
+    const p = document.getElementById('lin-info')?.getBoundingClientRect();
+    const inside = r.left >= s.left && r.right <= s.right && r.top >= s.top && r.bottom <= s.bottom;
+    const covered = !!p && r.right > p.left && r.left < p.right && r.bottom > p.top && r.top < p.bottom;
+    if (!inside || covered) centerOn(n.x, n.y, Infinity);
+  };
+
+  const node = selected ? lineageById[selected] : undefined;
+
+  return (
+    <>
+      <Chips selected={selected} onPick={focusNode} />
+
+      <div
+        id="lineage-tree"
+        ref={stageRef}
+        onFocus={keepInView}
+        className="relative h-[min(76vh,880px)] min-h-[480px] cursor-grab touch-none overflow-hidden border-y border-line bg-linear-to-b from-[color-mix(in_srgb,var(--raised)_55%,var(--surface))] to-surface select-none data-[dragging=true]:cursor-grabbing"
+      >
+        <TreeSvg svgRef={svgRef} chain={chain} selected={selected} onActivate={focusNode} />
+
+        {!node && (
+          <div
+            id="lin-key"
+            role="group"
+            aria-label="Legend"
+            className="absolute top-3 right-3 z-2 grid cursor-auto grid-cols-[auto_auto] gap-4 rounded-xl border border-line bg-[color-mix(in_srgb,var(--surface)_88%,transparent)] px-3.5 py-2.5 font-bn text-[12.5px] text-text-2 backdrop-blur-[6px]"
+          >
+            <div className="grid gap-[5px]">
+              <LegendEntries className="inline-flex items-center gap-2 whitespace-nowrap" />
+            </div>
+            <div className="grid gap-[5px]">
+              <LegendEntries lines lineWidth="w-[22px]" className="inline-flex items-center gap-2 whitespace-nowrap" />
+            </div>
+          </div>
+        )}
+        {node && (
+          <aside
+            id="lin-info"
+            aria-label={node.bn}
+            className="absolute top-3.5 right-3.5 z-3 max-h-[calc(100%-28px)] w-[min(340px,calc(100%-28px))] cursor-auto overflow-auto overscroll-contain rounded-[14px] border border-line-strong bg-surface px-[18px] pt-4 pb-3.5 shadow-(--shadow) select-text"
+          >
+            <LineageInfo n={node} onSelect={focusNode} onClose={close} />
+          </aside>
+        )}
+      </div>
+
+      <BottomBar
+        tools={
+          <div lang="en" className="flex flex-none gap-1.5">
+            <button type="button" aria-label="Zoom out" className={TOOL_BTN} onClick={() => zoomBy(1.4)}>
+              <ZoomIcon d="M5 12h14" />
+            </button>
+            <button type="button" aria-label="Zoom in" className={TOOL_BTN} onClick={() => zoomBy(0.7)}>
+              <ZoomIcon d="M12 5v14M5 12h14" />
+            </button>
+            <button type="button" aria-label="Show the whole tree" className={TOOL_BTN} onClick={() => animateTo(FIT)}>
+              <ZoomIcon d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+            </button>
+          </div>
+        }
+      />
+    </>
+  );
+}
+
+/**
+ * Phones (≤ 760px, spec §10): a vertical list instead of the canvas, and the details in a fixed bottom
+ * sheet above the tab bar. `#lineage-tree` stays in the DOM, hidden, with the static tree for test hooks;
+ * pan/zoom is never attached to it.
+ */
+function PhoneLineage({ selected, chain, select, close }: ViewProps) {
+  const listRef = useRef<LineageListHandle>(null);
+  /** Select, expand its fold and scroll its row into view (chips, Parent/Children links). */
+  const focusNode = useCallback(
+    (id: string) => {
+      if (!lineageById[id]) return;
+      select(id);
+      listRef.current?.reveal(id);
+    },
+    [select],
+  );
+  const node = selected ? lineageById[selected] : undefined;
+
+  return (
+    <>
+      <Chips selected={selected} onPick={focusNode} />
+      {/* fixed above the tab bar; first in DOM order so it comes right after the chips when tabbing */}
+      {node && (
+        <aside
+          id="lin-sheet"
+          aria-label={node.bn}
+          className="fixed right-2 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] left-2 z-46 max-h-[60vh] overflow-auto overscroll-contain rounded-[14px] border border-line-strong bg-surface px-4 pt-3.5 pb-3 shadow-(--shadow)"
+        >
+          <LineageInfo n={node} onSelect={focusNode} onClose={close} />
+        </aside>
+      )}
+      <div id="lineage-tree" hidden>
+        <TreeSvg chain={chain} selected={selected} onActivate={focusNode} />
+      </div>
+      <div className={PAD_X}>
+        <div className="mx-auto max-w-280">
+          <LineageList ref={listRef} chain={chain} selected={selected} onSelect={select} />
+        </div>
+      </div>
+      <BottomBar />
+    </>
   );
 }
 
 export function LineageTree() {
-  const { openQuickLook } = useTimelineApp();
-  const adam = events.find((e) => e.id === 7);
+  const { quickLookEvent, searchOpen } = useTimelineApp();
+  const phone = useMediaQuery('(max-width: 760px)');
+  const [selected, setSelected] = useState<string | null>(null);
+  const chain = useMemo(() => (selected ? ancestorChain(selected) : null), [selected]);
+  /** The chip, node or row that opened the details; links inside the details don't replace it. */
+  const opener = useRef<Element | null>(null);
 
+  const select = useCallback((id: string | null) => {
+    const a = document.activeElement;
+    if (a && !a.closest(PANELS)) opener.current = a === document.body ? null : a;
+    setSelected(id);
+  }, []);
+
+  const close = useCallback(
+    (pointer: boolean) => {
+      if (selected) returnFocus(selected, opener.current, pointer);
+      opener.current = null;
+      setSelected(null);
+    },
+    [selected],
+  );
+
+  // Escape clears the selection, but not while the reader or search is open (each owns Escape while open)
+  useEffect(() => {
+    if (!selected || quickLookEvent || searchOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected, quickLookEvent, searchOpen, close]);
+
+  const View = phone ? PhoneLineage : DesktopLineage;
   return (
     <>
-      <PageHeader title="নবীগণের বংশধারা" />
-      <div className="pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]">
-        <section aria-label="নবীগণের বংশধারা" className="mx-auto max-w-280">
-          <div className="mt-[22px] flex flex-wrap justify-center gap-[18px] font-bn text-[13.5px] text-muted">
-            <span className="inline-flex items-center gap-2">
-              <i className="inline-block h-0 w-7 border-t-2 border-gold" />
-              সরাসরি সন্তান
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <i className="inline-block h-0 w-7 border-t-2 border-dotted border-gold" />
-              মাঝে বহু প্রজন্ম
-            </span>
-          </div>
-
-          <div
-            id="lineage-tree"
-            className="grid [--col:260px] grid-cols-[repeat(3,var(--col))] justify-center py-7 pb-10 phone:[--col:172px] phone:grid-cols-[repeat(2,var(--col))]"
-          >
-            <Node bn="আদম (আঃ)" major first onRead={adam ? () => openQuickLook(adam) : undefined} />
-            <Link label="পুত্র" />
-            <Node bn="শীষ (আঃ)" />
-            <Gap />
-            <Node bn="নূহ (আঃ)" />
-            <Gap />
-            <Node bn="ইব্রাহিম (আঃ)" major />
-            <div className={'relative h-[34px] ' + PAIR_COL}>
-              <span className="absolute top-0 left-[calc(var(--col)_/_2_-_1px)] h-full w-0.5 bg-gold" />
-              <span className="absolute top-1/2 left-[calc(var(--col)_/_2)] h-0.5 w-(--col) bg-gold" />
-              <span className="absolute top-1/2 bottom-0 left-[calc(var(--col)_*_1.5_-_1px)] w-0.5 bg-gold" />
-            </div>
-            <div className={'grid grid-cols-[var(--col)_var(--col)] items-start ' + PAIR_COL}>
-              <Node bn="ইসমাইল (আঃ)" kind="pair" />
-              <Node bn="ইসহাক (আঃ)" kind="branch" note="বনী ইসরাঈলের নবীগণের ধারা" />
-            </div>
-            <Gap />
-            <Node bn="আদনান" />
-            <Gap />
-            <Node bn="আব্দুল্লাহ" />
-            <Link label="পুত্র" />
-            <Node bn="মুহাম্মদ ﷺ" major />
-          </div>
-        </section>
-      </div>
+      <h1 className="sr-only">নবীগণের বংশধারা</h1>
+      <View selected={selected} chain={chain} select={select} close={close} />
     </>
   );
 }
