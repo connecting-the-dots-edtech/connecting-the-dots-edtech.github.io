@@ -174,6 +174,8 @@ export function usePanZoom(stageRef: RefObject<HTMLElement | null>, svgRef: RefO
       start = { view: { ...view.current }, pts: new Map(pts) };
     };
     const onWheel = (e: WheelEvent) => {
+      // overlays (details panel, legend) scroll natively; they are not part of the canvas
+      if ((e.target as Element).closest(optsRef.current.ignore)) return;
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         const [cx, cy] = clientToCanvas(e.clientX, e.clientY);
