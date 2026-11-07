@@ -1,4 +1,10 @@
-import type { TimelineEvent } from '../data/types';
+import type { EraId, TimelineEvent } from '../data/types';
+
+const ERA_IDS: readonly EraId[] = ['cosmos', 'prophets', 'jahiliyya', 'seerah', 'rashidun', 'umayyad', 'abbasid', 'later'];
+
+function isEraId(x: string): x is EraId {
+  return (ERA_IDS as readonly string[]).includes(x);
+}
 
 /**
  * Minimal frontmatter parser for our event Markdown files. Not a general
@@ -24,7 +30,10 @@ function parseFrontmatter(raw: string): { fields: Record<string, string>; body: 
     fields[key] = value;
   }
 
-  return { fields, body: body.trim() };
+  // drop a leading stray HTML-tag line (e.g. `<div>`) left in some owner-authored files
+  const cleaned = body.replace(/^<[^>\n]*>[ \t]*(\r?\n|$)/, '').trim();
+
+  return { fields, body: cleaned };
 }
 
 export function parseEventMarkdown(raw: string): TimelineEvent {
@@ -34,6 +43,8 @@ export function parseEventMarkdown(raw: string): TimelineEvent {
   for (const key of required) {
     if (!(key in fields)) throw new Error(`Event markdown is missing required field "${key}"`);
   }
+
+  if (!isEraId(fields.era)) throw new Error(`Unknown era "${fields.era}" in event ${fields.id}`);
 
   const event: TimelineEvent = {
     id: Number(fields.id),

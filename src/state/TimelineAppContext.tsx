@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState } fro
 import type { ReactNode, RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { events as allEvents, categories, eventMatchesCategory } from '../data/timeline';
-import type { CategoryKey, TimelineEvent, ViewMode } from '../data/types';
+import type { CategoryKey, EraId, TimelineEvent, ViewMode } from '../data/types';
 
 const ZOOM_SCALES = [0.7, 1, 1.5, 2.2];
 const ZOOM_NAMES = ['Eras', 'Decades', 'Years', 'Detail'];
@@ -18,7 +18,10 @@ interface TimelineAppValue {
   zoomOut: () => void;
 
   trackRef: RefObject<HTMLDivElement | null>;
-  scrollToEra: (eraId: string) => void;
+  scrollToEra: (eraId: EraId) => void;
+
+  selectedEra: EraId;
+  setSelectedEra: (id: EraId) => void;
 
   quickLookEvent: TimelineEvent | null;
   openQuickLook: (ev: TimelineEvent) => void;
@@ -41,6 +44,7 @@ const TimelineAppContext = createContext<TimelineAppValue | null>(null);
 export function TimelineAppProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<ViewMode>('timeline');
   const [zoom, setZoom] = useState(1);
+  const [selectedEra, setSelectedEra] = useState<EraId>('cosmos');
   const [quickLookEvent, setQuickLookEvent] = useState<TimelineEvent | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -53,15 +57,20 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
   const zoomOut = useCallback(() => setZoom((z) => Math.max(0, z - 1)), []);
 
   const scrollToEra = useCallback(
-    (eraId: string) => {
+    (eraId: EraId) => {
       setView('timeline');
       navigate('/timeline');
       // the Timeline page mounts on the next tick after navigating
       setTimeout(() => {
-        const track = trackRef.current;
-        if (!track) return;
-        const band = track.querySelector<HTMLElement>(`[data-era="${eraId}"]`);
-        if (band) track.scrollTo({ left: band.offsetLeft - 60, behavior: 'smooth' });
+        const band = document.querySelector<HTMLElement>(`[data-era="${eraId}"]`);
+        const scroller = document.getElementById('tl-scroller');
+        if (!band || !scroller) return;
+        if (window.matchMedia('(max-width: 760px)').matches) {
+          band.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          scroller.scrollTo({ left: band.offsetLeft - 16 });
+          scroller.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }, 80);
     },
     [navigate],
@@ -90,6 +99,8 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
     zoomOut,
     trackRef,
     scrollToEra,
+    selectedEra,
+    setSelectedEra,
     quickLookEvent,
     openQuickLook,
     closeQuickLook,

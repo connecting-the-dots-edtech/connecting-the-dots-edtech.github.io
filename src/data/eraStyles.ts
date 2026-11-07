@@ -1,3 +1,5 @@
+import type { EraId } from './types';
+
 /**
  * Literal Tailwind utility strings per era, keyed by era id.
  *
@@ -8,8 +10,8 @@
  *
  * Why this can't be a generated loop: Tailwind's build-time scanner only
  * picks up class names that appear as complete, literal, contiguous text
- * in a source file — it does not execute JS. A factory like
- * `` `bg-[var(--era-${id}-tint)]` `` would never produce a literal string
+ * in a source file — it does not execute JS. A class built
+ * from the era id at runtime would never produce a literal string
  * Tailwind can see, so no CSS would be generated for it. Each entry below
  * has to be spelled out in full for exactly that reason (same rule as
  * never building a class via string concatenation at runtime).
@@ -149,4 +151,20 @@ export const eraWidthClasses: Record<string, [string, string, string, string]> =
   umayyad: ['min-w-[392px]', 'min-w-[560px]', 'min-w-[840px]', 'min-w-[1232px]'],
   abbasid: ['min-w-[392px]', 'min-w-[560px]', 'min-w-[840px]', 'min-w-[1232px]'],
   later: ['min-w-[602px]', 'min-w-[860px]', 'min-w-[1290px]', 'min-w-[1892px]'],
+};
+
+/**
+ * Sets the `--e` custom property to the era's colour token. Put on an element
+ * (or ancestor), then use `text-e`, `bg-e`, `border-e`, `stroke-e`, `fill-e`.
+ * Spelled out literally so Tailwind's scanner sees every class.
+ */
+export const eraVar: Record<EraId, string> = {
+  cosmos: '[--e:var(--e-cosmos)]',
+  prophets: '[--e:var(--e-prophets)]',
+  jahiliyya: '[--e:var(--e-jahiliyya)]',
+  seerah: '[--e:var(--e-seerah)]',
+  rashidun: '[--e:var(--e-rashidun)]',
+  umayyad: '[--e:var(--e-umayyad)]',
+  abbasid: '[--e:var(--e-abbasid)]',
+  later: '[--e:var(--e-later)]',
 };

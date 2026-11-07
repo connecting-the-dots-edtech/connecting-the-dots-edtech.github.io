@@ -1,17 +1,22 @@
+export type EraId = 'cosmos' | 'prophets' | 'jahiliyya' | 'seerah' | 'rashidun' | 'umayyad' | 'abbasid' | 'later';
+
 export interface Era {
-  id: string;
+  id: EraId;
   bn: string;
   en: string;
   short: string;
   span: string;
-  tint: string;
-  accent: string;
-  glyph: string;
+  /** legacy, removed in Task 11 (era colour now comes from `eraVar`) */
+  tint?: string;
+  /** legacy, removed in Task 11 */
+  accent?: string;
+  /** legacy, removed in Task 11 */
+  glyph?: string;
 }
 
 export interface TimelineEvent {
   id: number;
-  era: string;
+  era: EraId;
   year: string;
   title: string;
   titleEn: string;
