@@ -11,7 +11,7 @@ interface EventCardProps {
 }
 
 const BASE =
-  'rounded-[14px] border border-line-strong bg-linear-[160deg] from-[color-mix(in_srgb,var(--e)_13%,var(--surface))] to-surface to-55% text-left shadow-(--shadow) transition-[border-color,box-shadow,translate] duration-150 hover:border-e hover:shadow-[var(--shadow),0_0_0_1px_var(--e),0_0_26px_color-mix(in_srgb,var(--e)_22%,transparent)]';
+  'rounded-[14px] border border-line-strong bg-linear-[160deg] from-[color-mix(in_srgb,var(--e)_13%,var(--surface))] to-surface to-55% text-left shadow-(--shadow) transition-[border-color,box-shadow,translate] duration-150 hover:border-(--e) hover:shadow-[var(--shadow),0_0_0_1px_var(--e),0_0_26px_color-mix(in_srgb,var(--e)_22%,transparent)]';
 
 const VARIANT = {
   timeline: 'grid w-[260px] gap-[5px] px-4 py-3.5 phone:w-auto',

@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef } from 'react';
+import type { FocusEvent } from 'react';
 import { eraVar } from '../data/eraStyles';
 import { eraById, eras, eventsForEra } from '../data/timeline';
 import type { Era, EraId } from '../data/types';
@@ -9,7 +11,8 @@ import { SectionHeading } from './ui/SectionHeading';
 
 interface EraPanelProps {
   id: EraId;
-  className?: string;
+  /** fade the era content in (only after the first change, never on first load) */
+  animate?: boolean;
 }
 
 const NAV_BTN =
@@ -17,8 +20,13 @@ const NAV_BTN =
 const NAV_LABEL = 'font-ui text-[13.5px] text-muted';
 const NAV_NAME = 'font-bn-display text-[19px] text-e phone:text-[16px]';
 
-/** Details for the selected era: its events as cards (or an empty state) plus previous / next navigation. */
-export function EraPanel({ id, className }: EraPanelProps) {
+/**
+ * Details for the selected era: its events as cards (or an empty state) plus
+ * previous / next navigation. Only the content block is keyed by era (so it
+ * re-mounts and fades); the nav row persists, so a focused nav button keeps
+ * focus across the change.
+ */
+export function EraPanel({ id, animate = false }: EraPanelProps) {
   const { setSelectedEra, scrollToEra } = useTimelineApp();
   const era = eraById[id];
   const evs = eventsForEra(id);
@@ -27,34 +35,57 @@ export function EraPanel({ id, className }: EraPanelProps) {
   const prev: Era | undefined = eras[i - 1];
   const next: Era | undefined = eras[i + 1];
 
+  const prevRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+  // the nav button that last had focus
+  const lastNav = useRef<HTMLElement | null>(null);
+  const trackNavFocus = (e: FocusEvent<HTMLElement>) => {
+    lastNav.current = e.target.dataset.eraNav ? e.target : null;
+  };
+
+  // At the first / last era one nav button disappears. If it had focus, hand
+  // focus to the same-direction button, else the remaining one.
+  useLayoutEffect(() => {
+    const el = lastNav.current;
+    if (!el || el.isConnected) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    const target = el.dataset.eraNav === 'next' ? nextRef.current ?? prevRef.current : prevRef.current ?? nextRef.current;
+    target?.focus({ preventScroll: true });
+  }, [id]);
+
   return (
-    <div
-      id="era-panel"
-      className={'border-t border-line pt-7 ' + eraVar[id] + (className ? ' ' + className : '')}
-    >
-      <SectionHeading
-        eraId={id}
-        title={era.bn}
-        meta={era.span + (n ? ' · ' + bnDigits(n) + 'টি ঘটনা' : '')}
-      />
-      {n > 0 ? (
-        <div className="mt-6 grid grid-cols-3 gap-4 tablet:mx-auto tablet:max-w-[560px] tablet:grid-cols-1">
-          {evs.map((ev) => (
-            <EventCard key={ev.id} ev={ev} variant="feature" />
-          ))}
-        </div>
-      ) : (
-        <div className="mt-[22px] grid justify-items-center gap-3 rounded-[14px] border border-dashed border-line-strong px-4 py-9 text-center">
-          <Emblem spin={false} className="h-[120px] w-[120px] opacity-55" />
-          <p lang="en" className="font-ui text-[16px] text-text-2">
-            No events published for this era yet
-          </p>
-        </div>
-      )}
-      <div className="mt-7 grid grid-cols-[1fr_auto_1fr] items-center gap-3 phone:grid-cols-2">
+    <div id="era-panel" className={'border-t border-line pt-7 ' + eraVar[id]}>
+      <div key={id} className={animate ? 'animate-swap-in' : undefined}>
+        <SectionHeading
+          eraId={id}
+          title={era.bn}
+          meta={era.span + (n ? ' · ' + bnDigits(n) + 'টি ঘটনা' : '')}
+        />
+        {n > 0 ? (
+          <div className="mt-6 grid grid-cols-3 gap-4 tablet:mx-auto tablet:max-w-[560px] tablet:grid-cols-1">
+            {evs.map((ev) => (
+              <EventCard key={ev.id} ev={ev} variant="feature" />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-[22px] grid justify-items-center gap-3 rounded-[14px] border border-dashed border-line-strong px-4 py-9 text-center">
+            <Emblem spin={false} className="h-[120px] w-[120px] opacity-55" />
+            <p lang="en" className="font-ui text-[16px] text-text-2">
+              No events published for this era yet
+            </p>
+          </div>
+        )}
+      </div>
+      <div
+        onFocus={trackNavFocus}
+        className="mt-7 grid grid-cols-[1fr_auto_1fr] items-center gap-3 phone:grid-cols-2"
+      >
         {prev ? (
           <button
+            ref={prevRef}
             type="button"
+            data-era-nav="prev"
             onClick={() => setSelectedEra(prev.id)}
             className={NAV_BTN + ' text-left ' + eraVar[prev.id]}
           >
@@ -80,7 +111,9 @@ export function EraPanel({ id, className }: EraPanelProps) {
         )}
         {next ? (
           <button
+            ref={nextRef}
             type="button"
+            data-era-nav="next"
             onClick={() => setSelectedEra(next.id)}
             className={NAV_BTN + ' text-right ' + eraVar[next.id]}
           >

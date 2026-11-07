@@ -23,9 +23,10 @@ export function useDragScroll<T extends HTMLElement>(ref: RefObject<T | null>) {
     let startLeft = 0;
 
     const onPointerDown = (e: PointerEvent) => {
+      // reset first: a drag released outside the scroller must not swallow the next touch / pen click
+      moved = false;
       if (e.pointerType !== 'mouse' || e.button !== 0) return;
       dragging = true;
-      moved = false;
       startX = e.clientX;
       startLeft = el.scrollLeft;
       el.style.scrollBehavior = 'auto';

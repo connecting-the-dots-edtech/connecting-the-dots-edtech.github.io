@@ -22,7 +22,7 @@ export function Header({ onOpenSearch }: HeaderProps) {
   }, [onOpenSearch]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))] backdrop-blur-[10px]">
+    <header lang="en" className="sticky top-0 z-40 border-b border-line bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))] backdrop-blur-[10px]">
       <div className="mx-auto flex h-16 max-w-280 items-center gap-5">
         <NavLink to="/" aria-label="Connecting the Dots, home" className="mr-auto flex items-center gap-2.5 whitespace-nowrap">
           <LogoMark className="size-7 flex-none" />

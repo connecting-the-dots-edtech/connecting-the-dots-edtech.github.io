@@ -9,12 +9,39 @@ export function SearchOverlay() {
   const { searchOpen, closeSearch, query, setQuery, category, setCategory, categories, categoryCounts, searchResults, openQuickLook } =
     useTimelineApp();
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Focus the input on open; hand focus back to whatever opened search on close.
+  // When a result opens the reader, this runs before the reader's own open
+  // effect, so the reader records (and later restores) this same opener.
+  useEffect(() => {
+    if (!searchOpen) return;
+    const opener = document.activeElement;
+    inputRef.current?.focus();
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [searchOpen]);
 
   useEffect(() => {
     if (!searchOpen) return;
-    inputRef.current?.focus();
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') closeSearch();
+      if (e.key === 'Escape') {
+        closeSearch();
+        return;
+      }
+      if (e.key !== 'Tab' || !dialogRef.current) return;
+      // aria-modal: keep Tab inside the dialog, wrapping at either end
+      const items = dialogRef.current.querySelectorAll<HTMLElement>('input, button:not([disabled])');
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const inside = active instanceof Node && dialogRef.current.contains(active);
+      if (e.shiftKey ? !inside || active === first : !inside || active === last) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -33,6 +60,7 @@ export function SearchOverlay() {
     <>
       <div className="fixed inset-0 z-65 bg-(--scrim)" onClick={closeSearch} aria-hidden="true" />
       <div
+        ref={dialogRef}
         id="search"
         lang="bn"
         role="dialog"

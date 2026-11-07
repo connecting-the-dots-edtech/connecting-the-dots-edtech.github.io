@@ -7,7 +7,7 @@ import { useCurve } from '../../hooks/useCurve';
 import { useDragScroll } from '../../hooks/useDragScroll';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { pad2 } from '../../lib/format';
-import { isTypingTarget } from '../../lib/keys';
+import { isPlainArrow, isTypingTarget } from '../../lib/keys';
 import { useTimelineApp } from '../../state/TimelineAppContext';
 import { CurveSvg } from '../ui/CurveSvg';
 import { EventCard } from '../ui/EventCard';
@@ -46,7 +46,9 @@ function EventColumn({ ev }: { ev: TimelineEvent }) {
       <button
         type="button"
         data-curve-pt=""
-        aria-label={ev.title}
+        // the card is the keyboard / screen-reader target; the dot is a mouse shortcut
+        tabIndex={-1}
+        aria-hidden="true"
         onClick={() => openQuickLook(ev)}
         className={NODE_BASE + ' ' + (up ? NODE_UP : NODE_DOWN)}
       />
@@ -69,6 +71,10 @@ export function TimelineView() {
 
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
+  const leftRef = useRef<HTMLButtonElement>(null);
+  const rightRef = useRef<HTMLButtonElement>(null);
+  // an arrow that had focus when it became disabled at an end of the track
+  const strandedArrow = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const sc = trackRef.current;
@@ -78,6 +84,9 @@ export function TimelineView() {
     const update = () => {
       const s = sc.scrollLeft < 8;
       const e = sc.scrollLeft + sc.clientWidth > sc.scrollWidth - 8;
+      const active = document.activeElement;
+      if (s && s !== start && active === leftRef.current) strandedArrow.current = leftRef.current;
+      if (e && e !== end && active === rightRef.current) strandedArrow.current = rightRef.current;
       if (s !== start) setAtStart((start = s));
       if (e !== end) setAtEnd((end = e));
     };
@@ -92,10 +101,20 @@ export function TimelineView() {
     };
   }, [trackRef]);
 
+  // Move focus off an arrow that just became disabled: to the other arrow, else the scroller.
+  useEffect(() => {
+    const stranded = strandedArrow.current;
+    if (!stranded) return;
+    strandedArrow.current = null;
+    const other = stranded === leftRef.current ? rightRef.current : leftRef.current;
+    const target = other && !other.disabled ? other : trackRef.current;
+    target?.focus({ preventScroll: true });
+  }, [atStart, atEnd, trackRef]);
+
   useEffect(() => {
     if (quickLookEvent !== null || searchOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (!isPlainArrow(e)) return;
       if (isTypingTarget(document.activeElement)) return;
       const sc = trackRef.current;
       if (!sc) return;
@@ -114,6 +133,7 @@ export function TimelineView() {
   return (
     <div className="relative mt-[22px] phone:mt-[18px]">
       <button
+        ref={leftRef}
         type="button"
         lang="en"
         aria-label="Earlier events"
@@ -146,7 +166,7 @@ export function TimelineView() {
                 key={era.id}
                 data-era={era.id}
                 className={
-                  'flex flex-none flex-col border-r border-line phone:mb-3.5 phone:rounded-[12px] phone:border ' +
+                  'flex flex-none flex-col border-r border-line phone:mb-3.5 phone:scroll-mt-[76px] phone:rounded-[12px] phone:border ' +
                   eraVar[era.id]
                 }
               >
@@ -178,6 +198,7 @@ export function TimelineView() {
       </div>
 
       <button
+        ref={rightRef}
         type="button"
         lang="en"
         aria-label="Later events"

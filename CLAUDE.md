@@ -109,7 +109,8 @@ data in `src/data/`.
 Timeline events are authored as individual Markdown files in
 `src/content/events/*.md` (frontmatter: `id`, `era`, `year`, `title`,
 `titleEn`, `up`, `thumb`, optional `arabic`; the body below the `---` fence
-is the narrative text). `src/content/parseEvent.ts` has a small hand-rolled
+is the narrative text). `up` is currently unused by the layout (the timeline
+alternates cards by `id % 2`); it is still required and kept for compatibility. `src/content/parseEvent.ts` has a small hand-rolled
 frontmatter parser (not a YAML library — deliberately, since a static Vite
 build has no use for one). `src/content/events/index.ts` is the registry:
 each `.md` file is imported with a `?raw` suffix and mapped by numeric id;
@@ -131,8 +132,8 @@ timeline track's scroll ref plus `scrollToEra()`, the Eras page's
 page in the provider; components call `useTimelineApp()` directly rather than
 receiving these as props.
 
-`src/state/ThemeContext.tsx` holds the theme. It follows the OS preference
-until the visitor toggles; only then is the choice saved to `localStorage`
+`src/state/ThemeContext.tsx` holds the theme. It starts from the OS preference
+(read once at load) until the visitor toggles; only then is the choice saved to `localStorage`
 (`theme`). `index.html` sets `data-theme` before first paint. The reader's text
 size is saved separately in `localStorage` (`ctd-size`).
 

@@ -2,7 +2,8 @@ import type { EraId } from './types';
 
 /**
  * Sets the `--e` custom property to the era's colour token. Put on an element
- * (or ancestor), then use `text-e`, `bg-e`, `border-e`, `stroke-e`, `fill-e`.
+ * (or ancestor), then use `text-e`, `bg-e`, `border-(--e)`, `stroke-e`, `fill-e`
+ * (not `border-e`: in Tailwind v4 that is the inline-end border width utility).
  * Spelled out literally so Tailwind's scanner sees every class.
  */
 export const eraVar: Record<EraId, string> = {

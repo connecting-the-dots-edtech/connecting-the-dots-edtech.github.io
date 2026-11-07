@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useTimelineApp } from '../../state/TimelineAppContext';
 import { TimelineView } from './TimelineView';
@@ -14,12 +15,15 @@ export function TimelineExplorer() {
   // Exactly one ViewSwitch is mounted at a time: above the track on phones and in
   // list view, beside the minimap otherwise.
   const topSwitch = !timeline || phone;
+  // lets the newly mounted switch take focus after a keyboard toggle
+  const refocusSwitch = useRef(false);
 
   return (
     <section id="timeline" className="relative pb-10">
+      <h1 className="sr-only">সময়রেখা</h1>
       {topSwitch && (
         <div className={'flex justify-center pt-6 ' + GUTTER}>
-          <ViewSwitch />
+          <ViewSwitch refocus={refocusSwitch} />
         </div>
       )}
 
@@ -30,7 +34,7 @@ export function TimelineExplorer() {
             <div className="mx-auto max-w-[1120px]">
               <div className="mt-[14px] flex items-center gap-4 phone:hidden">
                 <ScrubberMinimap />
-                {!topSwitch && <ViewSwitch />}
+                {!topSwitch && <ViewSwitch refocus={refocusSwitch} />}
               </div>
               <div
                 id="tl-hints"

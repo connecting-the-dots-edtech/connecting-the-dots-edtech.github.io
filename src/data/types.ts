@@ -14,7 +14,7 @@ export interface TimelineEvent {
   year: string;
   title: string;
   titleEn: string;
-  /** whether the card renders above the axis (alternating layout) */
+  /** currently unused by the layout (the timeline alternates by `id % 2`); kept for frontmatter compatibility */
   up: boolean;
   thumb: string;
   body: string;

@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { events, eraById } from '../data/timeline';
 import { eraVar } from '../data/eraStyles';
 import { useTimelineApp } from '../state/TimelineAppContext';
 import { pad2, readMinutes, splitSource } from '../lib/format';
-import { isTypingTarget } from '../lib/keys';
+import { isPlainArrow, isTypingTarget } from '../lib/keys';
 import { CloseIcon } from './ui/icons';
 import type { TimelineEvent } from '../data/types';
 
 type TextSize = 1 | 2 | 3;
+
+const NAV_TITLE = 'overflow-hidden font-bn-display text-[16px] leading-[1.35] text-ellipsis whitespace-nowrap';
 
 const SIZE_KEY = 'ctd-size';
 
@@ -52,6 +54,10 @@ export function EventModal() {
   const panelRef = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLSpanElement>(null);
+  const prevRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
+  // the nav button that had focus when the reader stepped to another event
+  const steppedFrom = useRef<HTMLButtonElement | null>(null);
 
   const index = shown ? events.findIndex((e) => e.id === shown.id) : -1;
   const prev = index > 0 ? events[index - 1] : undefined;
@@ -98,19 +104,32 @@ export function EventModal() {
 
   const step = useCallback(
     (ev: TimelineEvent | undefined) => {
-      if (ev) openQuickLook(ev);
+      if (!ev) return;
+      const active = document.activeElement;
+      steppedFrom.current = [prevRef.current, nextRef.current].find((b) => b !== null && b === active) ?? null;
+      openQuickLook(ev);
     },
     [openQuickLook],
   );
 
+  // At the first / last event a nav button becomes disabled. If it had focus,
+  // hand focus to the other nav button, else the panel.
+  useLayoutEffect(() => {
+    const from = steppedFrom.current;
+    steppedFrom.current = null;
+    if (!from || !from.disabled) return;
+    const other = from === prevRef.current ? nextRef.current : prevRef.current;
+    (other && !other.disabled ? other : panelRef.current)?.focus({ preventScroll: true });
+  }, [shownId]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.defaultPrevented) return;
       if (e.key === 'Escape') {
         // search owns Escape while it is open
-        if (!searchOpen) closeQuickLook();
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (!searchOpen && !e.metaKey && !e.ctrlKey && !e.altKey) closeQuickLook();
+      } else if (isPlainArrow(e)) {
         if (searchOpen || isTypingTarget(document.activeElement)) return;
         e.preventDefault();
         step(e.key === 'ArrowLeft' ? prev : next);
@@ -161,7 +180,7 @@ export function EventModal() {
             </>
           )}
         </span>
-        <div role="group" aria-label="Text size" className="inline-flex overflow-hidden rounded-lg border border-line-strong">
+        <div role="group" aria-label="Text size" lang="en" className="inline-flex overflow-hidden rounded-lg border border-line-strong">
           {SIZE_BUTTONS.map((b) => (
             <button
               key={b.size}
@@ -172,7 +191,7 @@ export function EventModal() {
               onClick={() => chooseSize(b.size)}
               className="h-8 w-[38px] font-bn text-[15px] font-semibold text-text-2 not-first:border-l not-first:border-line-strong aria-pressed:bg-raised aria-pressed:text-text"
             >
-              {b.label}
+              <span lang="bn">{b.label}</span>
             </button>
           ))}
         </div>
@@ -180,6 +199,7 @@ export function EventModal() {
           type="button"
           onClick={closeQuickLook}
           aria-label="Close"
+          lang="en"
           className="inline-grid h-9 w-9 flex-none place-items-center rounded-full border border-line-strong text-text-2 hover:border-gold hover:text-gold"
         >
           <CloseIcon className="h-4 w-4" />
@@ -193,14 +213,14 @@ export function EventModal() {
             <div className="flex flex-wrap gap-x-3 gap-y-1 font-bn text-[14px] text-muted">
               <b className="font-medium text-e">অধ্যায় {pad2(shown.id)}</b>
               <span>{shown.year}</span>
-              <span>{readMinutes(shown.body)} min read</span>
+              <span lang="en">{readMinutes(shown.body)} min read</span>
             </div>
             <h2 id="r-title" className="mt-2.5 font-bn-display text-[32px] leading-[1.3] font-normal phone:text-[27px]">
               {shown.title}
             </h2>
             {shown.source && (
               <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-raised px-3 py-1 font-bn text-[14px] text-text-2">
-                Source: {shown.source}
+                <span lang="en">Source:</span> {shown.source}
               </div>
             )}
 
@@ -214,24 +234,42 @@ export function EventModal() {
 
             {source && (
               <div className="mt-8 grid gap-0.5 rounded-[10px] border border-line-strong px-[18px] py-4">
-                <span className="mb-0.5 font-ui text-xs font-semibold tracking-widest text-muted uppercase">Source</span>
+                <span lang="en" className="mb-0.5 font-ui text-xs font-semibold tracking-widest text-muted uppercase">Source</span>
                 <b className="font-bn-display text-[18px] font-normal">{source.book}</b>
                 {source.volume && <span className="font-bn text-[14px] text-muted">{source.volume}</span>}
               </div>
             )}
 
             <div className="mt-6 grid grid-cols-2 gap-2.5">
-              <button type="button" disabled={!prev} onClick={() => step(prev)} className={navBtn}>
-                <small className="font-ui text-[13px] text-muted">← Previous</small>
-                <span className="overflow-hidden font-bn-display text-[16px] leading-[1.35] text-ellipsis whitespace-nowrap">
-                  {prev ? prev.title : 'This is the first event'}
-                </span>
+              <button ref={prevRef} type="button" disabled={!prev} onClick={() => step(prev)} className={navBtn}>
+                <small lang="en" className="font-ui text-[13px] text-muted">
+                  ← Previous
+                </small>
+                {prev ? (
+                  <span className={NAV_TITLE}>{prev.title}</span>
+                ) : (
+                  <span lang="en" className={NAV_TITLE}>
+                    This is the first event
+                  </span>
+                )}
               </button>
-              <button type="button" disabled={!next} onClick={() => step(next)} className={`${navBtn} text-right`}>
-                <small className="font-ui text-[13px] text-muted">Next →</small>
-                <span className="overflow-hidden font-bn-display text-[16px] leading-[1.35] text-ellipsis whitespace-nowrap">
-                  {next ? next.title : 'More events coming soon'}
-                </span>
+              <button
+                ref={nextRef}
+                type="button"
+                disabled={!next}
+                onClick={() => step(next)}
+                className={`${navBtn} text-right`}
+              >
+                <small lang="en" className="font-ui text-[13px] text-muted">
+                  Next →
+                </small>
+                {next ? (
+                  <span className={NAV_TITLE}>{next.title}</span>
+                ) : (
+                  <span lang="en" className={NAV_TITLE}>
+                    More events coming soon
+                  </span>
+                )}
               </button>
             </div>
           </>

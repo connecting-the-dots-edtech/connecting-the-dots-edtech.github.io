@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { scrollBehavior } from '../lib/motion';
 import { events as allEvents, categories, eventMatchesCategory } from '../data/timeline';
 import type { CategoryKey, EraId, TimelineEvent, ViewMode } from '../data/types';
@@ -50,11 +50,13 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
 
   const trackRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const scrollToEra = useCallback(
     (eraId: EraId) => {
       setView('timeline');
-      navigate('/timeline');
+      // already on the timeline: don't stack another history entry
+      navigate('/timeline', { replace: pathname === '/timeline' });
       // the Timeline page mounts on the next tick after navigating
       setTimeout(() => {
         const band = document.querySelector<HTMLElement>(`[data-era="${eraId}"]`);
@@ -68,7 +70,7 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
         }
       }, 80);
     },
-    [navigate],
+    [navigate, pathname],
   );
 
   const openQuickLook = useCallback((ev: TimelineEvent) => setQuickLookEvent(ev), []);

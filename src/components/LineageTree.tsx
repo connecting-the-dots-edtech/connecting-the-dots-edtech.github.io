@@ -95,7 +95,7 @@ export function LineageTree() {
     <>
       <PageHeader title="নবীগণের বংশধারা" />
       <div className="pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]">
-        <section aria-label="নবীগণের বংশধারা" className="mx-auto max-w-280 pb-14">
+        <section aria-label="নবীগণের বংশধারা" className="mx-auto max-w-280">
           <div className="mt-[22px] flex flex-wrap justify-center gap-[18px] font-bn text-[13.5px] text-muted">
             <span className="inline-flex items-center gap-2">
               <i className="inline-block h-0 w-7 border-t-2 border-gold" />

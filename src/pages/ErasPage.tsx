@@ -3,7 +3,7 @@ import { EraJourney } from '../components/EraJourney';
 import { EraPanel } from '../components/EraPanel';
 import { PageHeader } from '../components/ui/PageHeader';
 import { eras } from '../data/timeline';
-import { isTypingTarget } from '../lib/keys';
+import { isPlainArrow, isTypingTarget } from '../lib/keys';
 import { scrollBehavior } from '../lib/motion';
 import { useTimelineApp } from '../state/TimelineAppContext';
 
@@ -26,8 +26,7 @@ export function ErasPage() {
   useEffect(() => {
     if (quickLookEvent !== null || searchOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (!isPlainArrow(e)) return;
       if (isTypingTarget(document.activeElement)) return;
       const i = eras.findIndex((x) => x.id === selectedEra);
       const target = eras[i + (e.key === 'ArrowRight' ? 1 : -1)];
@@ -44,7 +43,7 @@ export function ErasPage() {
       <div className="pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))]">
         <section aria-label="Choose an era" className="mx-auto max-w-280 pt-1 pb-14">
           <EraJourney selectedId={selectedEra} onSelect={setSelectedEra} />
-          <EraPanel key={selectedEra} id={selectedEra} className={changed ? 'animate-swap-in' : ''} />
+          <EraPanel id={selectedEra} animate={changed} />
         </section>
       </div>
     </>
