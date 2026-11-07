@@ -1,114 +1,242 @@
-import { useEffect, useState } from 'react';
-import { eraById } from '../data/timeline';
-import { eraStyles } from '../data/eraStyles';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { events, eraById } from '../data/timeline';
+import { eraVar } from '../data/eraStyles';
 import { useTimelineApp } from '../state/TimelineAppContext';
+import { pad2, readMinutes, splitSource } from '../lib/format';
+import { isTypingTarget } from '../lib/keys';
+import { CloseIcon } from './ui/icons';
 import type { TimelineEvent } from '../data/types';
 
-const EXIT_DURATION_MS = 300;
+type TextSize = 1 | 2 | 3;
+
+const SIZE_KEY = 'ctd-size';
+
+const SIZE_BUTTONS: { size: TextSize; label: string; aria: string }[] = [
+  { size: 1, label: 'অ−', aria: 'Smaller text' },
+  { size: 2, label: 'অ', aria: 'Default text size' },
+  { size: 3, label: 'অ+', aria: 'Larger text' },
+];
+
+const TEXT_SIZE_CLASS: Record<TextSize, string> = {
+  1: 'text-[16px] leading-[1.85]',
+  2: 'text-[18px] leading-[1.85]',
+  3: 'text-[20.5px] leading-[1.8]',
+};
+
+function readSize(): TextSize {
+  try {
+    const n = Number(localStorage.getItem(SIZE_KEY));
+    if (n === 1 || n === 2 || n === 3) return n;
+  } catch {
+    /* storage unavailable */
+  }
+  return 2;
+}
 
 /**
- * A docked side panel, not a blocking modal: no backdrop, so the page
- * behind stays scrollable and clickable. Opening a different event while
- * this is already open just swaps the panel's content in place; only the
- * open/close transitions animate.
+ * Right-hand reading panel. Stays mounted the whole time so the slide-in/out
+ * can transition; it is not modal (the page behind stays usable), so the
+ * page-level key handlers step aside while `quickLookEvent !== null` and this
+ * component owns Escape / ArrowLeft / ArrowRight.
  */
 export function EventModal() {
-  const { quickLookEvent, closeQuickLook } = useTimelineApp();
-  const [renderedEvent, setRenderedEvent] = useState<TimelineEvent | null>(null);
-  const [visible, setVisible] = useState(false);
+  const { quickLookEvent, openQuickLook, closeQuickLook, searchOpen } = useTimelineApp();
 
-  useEffect(() => {
-    if (quickLookEvent) {
-      setRenderedEvent(quickLookEvent);
-      // Only animate the entrance the first time the panel opens — if it's
-      // already open and the user clicked a different card, just swap
-      // content in place instead of re-running the slide-in.
-      if (!renderedEvent) {
-        setVisible(false);
-        // A single rAF often fires before the "off-screen" frame actually
-        // paints, so the browser jumps straight to the end state instead of
-        // transitioning. Nesting two rAFs guarantees a real painted frame
-        // in between.
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => setVisible(true));
-        });
-      }
-    } else if (renderedEvent) {
-      setVisible(false);
-      const t = setTimeout(() => setRenderedEvent(null), EXIT_DURATION_MS);
-      return () => clearTimeout(t);
+  // Keep showing the last event while the panel slides out.
+  const [shown, setShown] = useState<TimelineEvent | null>(quickLookEvent);
+  if (quickLookEvent && quickLookEvent !== shown) setShown(quickLookEvent);
+
+  const [size, setSize] = useState<TextSize>(readSize);
+  const open = quickLookEvent !== null;
+
+  const panelRef = useRef<HTMLElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLSpanElement>(null);
+
+  const index = shown ? events.findIndex((e) => e.id === shown.id) : -1;
+  const prev = index > 0 ? events[index - 1] : undefined;
+  const next = index >= 0 ? events[index + 1] : undefined;
+  const shownId = shown?.id;
+
+  const chooseSize = (s: TextSize) => {
+    setSize(s);
+    try {
+      localStorage.setItem(SIZE_KEY, String(s));
+    } catch {
+      /* storage unavailable */
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickLookEvent]);
+  };
+
+  // Focus the panel on open; hand focus back to whatever opened it on close.
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement;
+    panelRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (opener instanceof HTMLElement) opener.focus({ preventScroll: true });
+    };
+  }, [open]);
+
+  // A different event starts at the top.
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [shownId]);
+
+  // Reading-progress bar: imperative width (continuous runtime value).
+  useEffect(() => {
+    const body = bodyRef.current;
+    const bar = progressRef.current;
+    if (!body || !bar) return;
+    const update = () => {
+      const max = body.scrollHeight - body.clientHeight;
+      bar.style.width = `${max > 0 ? (body.scrollTop / max) * 100 : 100}%`;
+    };
+    update();
+    body.addEventListener('scroll', update, { passive: true });
+    return () => body.removeEventListener('scroll', update);
+  }, [shownId, size]);
+
+  const step = useCallback(
+    (ev: TimelineEvent | undefined) => {
+      if (ev) openQuickLook(ev);
+    },
+    [openQuickLook],
+  );
 
   useEffect(() => {
-    if (!renderedEvent) return;
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeQuickLook();
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'Escape') {
+        // search owns Escape while it is open
+        if (!searchOpen) closeQuickLook();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (searchOpen || isTypingTarget(document.activeElement)) return;
+        e.preventDefault();
+        step(e.key === 'ArrowLeft' ? prev : next);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [renderedEvent, closeQuickLook]);
+  }, [open, searchOpen, closeQuickLook, step, prev, next]);
 
-  if (!renderedEvent) return null;
+  const era = shown ? eraById[shown.era] : undefined;
+  const source = shown?.source ? splitSource(shown.source) : undefined;
+  const paragraphs = shown
+    ? shown.body
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+    : [];
 
-  const era = eraById[renderedEvent.era];
-  const style = eraStyles[era.id];
-  const paragraphs = renderedEvent.body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const panelBase =
+    'fixed top-0 right-0 bottom-0 z-70 flex w-[min(600px,100%)] flex-col border-l border-line-strong bg-surface pt-[env(safe-area-inset-top,0px)] pr-[env(safe-area-inset-right,0px)] pb-[env(safe-area-inset-bottom,0px)] shadow-[-24px_0_60px_rgba(0,0,0,0.25)] outline-none';
+  const panelState = open
+    ? 'translate-x-0 visible [transition:translate_0.28s_ease-out]'
+    : 'translate-x-[105%] invisible [transition:translate_0.28s_ease-out,visibility_0s_linear_0.28s]';
+
+  const navBtn =
+    'grid min-w-0 gap-0.5 rounded-[10px] border border-line-strong px-3.5 py-3 hover:border-gold disabled:cursor-default disabled:opacity-40 disabled:hover:border-line-strong';
 
   return (
-    <div
+    <aside
+      ref={panelRef}
+      id="reader"
       role="dialog"
-      aria-modal="true"
-      aria-label={renderedEvent.titleEn}
-      className={`fixed inset-y-0 right-0 z-130 flex w-full max-w-135 flex-col border-l border-border-gold bg-panel shadow-[-32px_0_60px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out ${
-        visible ? 'translate-x-0' : 'translate-x-full'
-      }`}
+      aria-modal="false"
+      aria-labelledby="r-title"
+      tabIndex={-1}
+      lang="bn"
+      data-open={open}
+      className={`${panelBase} ${panelState} ${shown ? eraVar[shown.era] : ''}`}
     >
-      <div className={`h-1.5 w-full flex-none ${style.accentBg}`} />
-
-      <button
-        type="button"
-        onClick={closeQuickLook}
-        aria-label="Close"
-        className="absolute top-6 right-6 z-20 h-9.5 w-9.5 rounded-full border-none bg-(--surface-3) text-base text-cream-text hover:bg-(--surface-4)"
-      >
-        ✕
-      </button>
-
-      <div className="relative flex-1 overflow-y-auto px-8 pt-10 pb-10 sm:px-10">
-        <div
-          aria-hidden="true"
-          className={`pointer-events-none absolute -top-10 -right-10 h-64 w-64 rounded-full opacity-[0.08] blur-3xl ${style.accentBg}`}
-        />
-
-        <span className={`text-2xl leading-none ${style.accentText}`} aria-hidden="true">
-          {era.glyph}
+      <div className="relative flex items-center gap-2.5 border-b border-line px-[18px] py-3">
+        <span className="mr-auto inline-flex min-w-0 items-center gap-2 font-bn text-[14px] text-text-2">
+          {era && (
+            <>
+              <i className="h-[9px] w-[9px] flex-none rounded-full bg-e" />
+              <span>
+                {era.bn} · {era.span}
+              </span>
+            </>
+          )}
         </span>
-
-        <h3 className="mt-4 mb-6 font-bn text-[28px] leading-[1.4] font-semibold text-cream">{renderedEvent.title}</h3>
-
-        <div className="mb-6 flex items-center gap-3" aria-hidden="true">
-          <span className={`h-px flex-1 ${style.accentBg} opacity-25`} />
-          <span className={`text-xs ${style.accentText}`}>◆</span>
-          <span className={`h-px flex-1 ${style.accentBg} opacity-25`} />
-        </div>
-
-        <div className="relative font-bn text-[17px] leading-[1.9] text-dim">
-          {paragraphs.map((para, i) => (
-            <p key={i} className={i > 0 ? 'mt-5' : 'text-[18px] text-cream-text/90'}>
-              {para}
-            </p>
+        <div role="group" aria-label="Text size" className="inline-flex overflow-hidden rounded-lg border border-line-strong">
+          {SIZE_BUTTONS.map((b) => (
+            <button
+              key={b.size}
+              type="button"
+              data-size={b.size}
+              aria-label={b.aria}
+              aria-pressed={size === b.size}
+              onClick={() => chooseSize(b.size)}
+              className="h-8 w-[38px] font-bn text-[15px] font-semibold text-text-2 not-first:border-l not-first:border-line-strong aria-pressed:bg-raised aria-pressed:text-text"
+            >
+              {b.label}
+            </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={closeQuickLook}
+          aria-label="Close"
+          className="inline-grid h-9 w-9 flex-none place-items-center rounded-full border border-line-strong text-text-2 hover:border-gold hover:text-gold"
+        >
+          <CloseIcon className="h-4 w-4" />
+        </button>
+        <span ref={progressRef} id="r-progress" className="absolute bottom-[-1px] left-0 h-0.5 w-0 bg-e" />
+      </div>
 
-        {renderedEvent.source && (
-          <div className="mt-8 flex gap-2 border-t border-border-gold pt-4 font-bn text-sm text-quiet italic">
-            <span className="text-teal not-italic">◇</span>
-            <span>সূত্র: {renderedEvent.source}</span>
-          </div>
+      <div ref={bodyRef} id="r-body" className="flex-1 overflow-y-auto px-8 pt-7 pb-10 phone:px-[18px] phone:pt-[22px] phone:pb-8">
+        {shown && era && (
+          <>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 font-bn text-[14px] text-muted">
+              <b className="font-medium text-e">অধ্যায় {pad2(shown.id)}</b>
+              <span>{shown.year}</span>
+              <span>{readMinutes(shown.body)} min read</span>
+            </div>
+            <h2 id="r-title" className="mt-2.5 font-bn-display text-[32px] leading-[1.3] font-normal phone:text-[27px]">
+              {shown.title}
+            </h2>
+            {shown.source && (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-raised px-3 py-1 font-bn text-[14px] text-text-2">
+                Source: {shown.source}
+              </div>
+            )}
+
+            <div lang="bn" className={`mt-[26px] max-w-[36em] font-bn text-text ${TEXT_SIZE_CLASS[size]}`}>
+              {paragraphs.map((p, i) => (
+                <p key={i} className={i > 0 ? 'mt-[1.1em]' : undefined}>
+                  {p}
+                </p>
+              ))}
+            </div>
+
+            {source && (
+              <div className="mt-8 grid gap-0.5 rounded-[10px] border border-line-strong px-[18px] py-4">
+                <span className="mb-0.5 font-ui text-xs font-semibold tracking-widest text-muted uppercase">Source</span>
+                <b className="font-bn-display text-[18px] font-normal">{source.book}</b>
+                {source.volume && <span className="font-bn text-[14px] text-muted">{source.volume}</span>}
+              </div>
+            )}
+
+            <div className="mt-6 grid grid-cols-2 gap-2.5">
+              <button type="button" disabled={!prev} onClick={() => step(prev)} className={navBtn}>
+                <small className="font-ui text-[13px] text-muted">← Previous</small>
+                <span className="overflow-hidden font-bn-display text-[16px] leading-[1.35] text-ellipsis whitespace-nowrap">
+                  {prev ? prev.title : 'This is the first event'}
+                </span>
+              </button>
+              <button type="button" disabled={!next} onClick={() => step(next)} className={`${navBtn} text-right`}>
+                <small className="font-ui text-[13px] text-muted">Next →</small>
+                <span className="overflow-hidden font-bn-display text-[16px] leading-[1.35] text-ellipsis whitespace-nowrap">
+                  {next ? next.title : 'More events coming soon'}
+                </span>
+              </button>
+            </div>
+          </>
         )}
       </div>
-    </div>
+    </aside>
   );
 }
