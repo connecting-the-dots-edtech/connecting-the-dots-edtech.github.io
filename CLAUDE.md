@@ -79,11 +79,14 @@ carry `lang="en"`. `titleEn` and era `en` exist in the data but are never
 rendered. No uppercase or letter-spacing on Bangla. Fonts: `font-bn-display`
 (Tiro Bangla) for Bangla titles, `font-bn` (Hind Siliguri) for Bangla body,
 `font-ui` for English UI, `font-lat` (Marcellus) for the wordmark only, `font-ar`
-(Amiri, then Traditional Arabic) for Arabic. No text under 12px; italic is never
+(Amiri, then Traditional Arabic) for Arabic. No text under 12px, except the lineage SVG, which scales: at the
+fitted desktop view (1440×900) prophet labels are ≥ 14px and person labels ≥ 11px (person and
+book labels are secondary and become readable on zoom). Italic is never
 synthesised. Motion is limited to the starfield twinkle, home emblem rotation,
 the home thread's travelling light, the timeline curve draw-in, card hover lift,
 the Eras panel swap fade, the reader slide-in and the lineage view tween (380ms,
-instant under reduced motion); all of it respects
+instant under reduced motion) and the lineage dim fade (250ms opacity on nodes,
+edges and phone rows outside the selected chain); all of it respects
 `prefers-reduced-motion`: CSS via the global rule in `index.css` (plus
 `motion-reduce:scroll-auto` on the timeline scroller), and JS smooth scrolls pass
 `scrollBehavior()` from `src/lib/motion.ts` (`'auto'` under reduced motion).
@@ -118,10 +121,14 @@ details body is `src/components/LineageInfo.tsx`, shared by the desktop panel
 (`lin-info`) and the phone bottom sheet (`lin-sheet`). To add a person: add a
 node with `x`/`y`, a `parent` and a `link`, and give a `source` (nodes without
 one fall back to the historians' default for `h` links, otherwise the Qur'an
-default). Names, notes and sources are Bangla.
+default). Roots are the exception: `adam` is the root, and `dhulkifl` has no
+parent and sets `unknown: true` (the tree shows "?", the panel says the lineage
+isn't known). Names, notes and sources are Bangla.
 
 On phones (≤ 760px) there is no canvas and no `Legend` pill: `#lineage-tree`
-stays in the DOM but hidden, with no pan/zoom attached, and
+stays in the DOM but hidden, holding a static copy of the tree (`#lin-svg`,
+`data-node`, `data-edge`, `data-lineage`) with no pan/zoom attached, so the
+desktop hooks exist at every width, and
 `src/components/LineageList.tsx` renders an inline legend and one row per person
 from `lineageRows()`. The line to মুহাম্মদ ﷺ runs down the left column. At each
 node the continuation (`continuationOf`: the child on the main line, else the
@@ -182,8 +189,8 @@ view. `ListView` groups events by era.
 
 An external browser verification script depends on a set of DOM ids/data attributes
 (`tl-scroller`, `tl-track`, `data-curve-pt`, `era-journey`, `era-panel`,
-`lineage-tree`, `lin-svg`, `lin-info`, `lin-key`, `data-node`, `data-edge`,
-`data-lin`, and on phones `lin-v`, `data-row`, `data-run` with `data-members`,
+`lineage-tree`, `lin-svg`, `lin-info`, `lin-key` (desktop only; absent while a node is selected), `data-node`,
+`data-edge`, `data-lin`, and on phones `lin-v`, `data-row`, `data-run` with `data-members`,
 `lin-sheet`; `reader`, `search`, ...). `data-lineage` on a node is `main` or
 `branch`: on or off the আদম → মুহাম্মদ ﷺ chain. Don't rename them without
 checking for uses.
