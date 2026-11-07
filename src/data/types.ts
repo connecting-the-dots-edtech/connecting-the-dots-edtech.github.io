@@ -50,6 +50,6 @@ export interface LineageNode {
   branches?: LineageBranch[];
 }
 
-export type CategoryKey = 'All' | 'Prophets' | 'Revelation' | 'Battles' | 'Caliphates' | 'Science';
+export type CategoryKey = 'All' | 'Creation' | 'Prophets' | 'Revelation' | 'Caliphates';
 
 export type ViewMode = 'timeline' | 'list';

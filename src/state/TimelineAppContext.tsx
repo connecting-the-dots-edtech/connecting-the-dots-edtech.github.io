@@ -4,6 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { events as allEvents, categories, eventMatchesCategory } from '../data/timeline';
 import type { CategoryKey, EraId, TimelineEvent, ViewMode } from '../data/types';
 
+/** `q` must already be trimmed and lower-cased; an empty `q` matches everything. */
+function matchesQuery(ev: TimelineEvent, q: string): boolean {
+  return !q || (ev.title + ' ' + ev.titleEn + ' ' + ev.body).toLowerCase().includes(q);
+}
+
 const ZOOM_SCALES = [0.7, 1, 1.5, 2.2];
 const ZOOM_NAMES = ['Eras', 'Decades', 'Years', 'Detail'];
 
@@ -37,6 +42,8 @@ interface TimelineAppValue {
   setCategory: (c: CategoryKey) => void;
   categories: CategoryKey[];
   searchResults: TimelineEvent[];
+  eventMatchesQuery: (ev: TimelineEvent, q: string) => boolean;
+  categoryCounts: Record<CategoryKey, number>;
 }
 
 const TimelineAppContext = createContext<TimelineAppValue | null>(null);
@@ -82,12 +89,19 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
 
-  const searchResults = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return allEvents.filter(
-      (ev) => eventMatchesCategory(ev, category) && (q === '' || (ev.title + ev.titleEn).toLowerCase().includes(q)),
-    );
-  }, [query, category]);
+  const q = query.trim().toLowerCase();
+
+  const searchResults = useMemo(
+    () => allEvents.filter((ev) => eventMatchesCategory(ev, category) && matchesQuery(ev, q)),
+    [q, category],
+  );
+
+  const categoryCounts = useMemo(() => {
+    const matched = allEvents.filter((ev) => matchesQuery(ev, q));
+    return Object.fromEntries(
+      categories.map((c) => [c, matched.filter((ev) => eventMatchesCategory(ev, c)).length]),
+    ) as Record<CategoryKey, number>;
+  }, [q]);
 
   const value: TimelineAppValue = {
     view,
@@ -113,6 +127,8 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
     setCategory,
     categories,
     searchResults,
+    eventMatchesQuery: matchesQuery,
+    categoryCounts,
   };
 
   return <TimelineAppContext.Provider value={value}>{children}</TimelineAppContext.Provider>;

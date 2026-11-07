@@ -30,16 +30,21 @@ export const lineage: LineageNode[] = [
   { bn: 'মুহাম্মদ ﷺ', en: 'The Prophet', sizeClass: 'text-[26px]', dotClass: 'bg-gold', borderClass: 'border-[rgba(201,162,90,0.7)]', connector: false },
 ];
 
-export const categories: CategoryKey[] = ['All', 'Prophets', 'Revelation', 'Battles', 'Caliphates', 'Science'];
+export const categories: CategoryKey[] = ['All', 'Creation', 'Prophets', 'Revelation', 'Caliphates'];
 
 export function eventMatchesCategory(ev: TimelineEvent, category: CategoryKey): boolean {
-  if (category === 'All') return true;
-  if (category === 'Prophets') return ev.era === 'prophets' || ev.era === 'cosmos';
-  if (category === 'Revelation') return ev.era === 'seerah';
-  if (category === 'Battles') return /যুদ্ধ|বিজয়|Badr|Conquest/i.test(ev.title + ev.titleEn);
-  if (category === 'Caliphates') return ['rashidun', 'umayyad', 'abbasid', 'later'].includes(ev.era);
-  if (category === 'Science') return false;
-  return true;
+  switch (category) {
+    case 'Creation':
+      return ev.era === 'cosmos';
+    case 'Prophets':
+      return ev.era === 'prophets';
+    case 'Revelation':
+      return ev.era === 'seerah';
+    case 'Caliphates':
+      return ['rashidun', 'umayyad', 'abbasid', 'later'].includes(ev.era);
+    default:
+      return true;
+  }
 }
 
 export const eraById = Object.fromEntries(eras.map((e) => [e.id, e])) as Record<EraId, Era>;
