@@ -1,73 +1,66 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
-import { MobileNav } from './MobileNav';
+import { LogoMark, SearchIcon } from './ui/icons';
+import { isTypingTarget } from '../lib/keys';
+import { NAV_LINKS } from './navLinks';
 
 interface HeaderProps {
   onOpenSearch: () => void;
 }
 
-const NAV_LINKS = [
-  { to: '/', label: 'Home' },
-  { to: '/timeline', label: 'Timeline' },
-  { to: '/eras', label: 'Eras' },
-  { to: '/lineage', label: 'Lineage' },
-];
-
 export function Header({ onOpenSearch }: HeaderProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget(document.activeElement)) return;
+      e.preventDefault();
+      onOpenSearch();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onOpenSearch]);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-90 flex items-center justify-between gap-4 px-6 py-4 backdrop-blur-md bg-linear-to-b from-ink/92 via-ink/65 to-transparent sm:px-10">
-      <NavLink to="/" className="flex items-center gap-3">
-        <span className="flex h-[30px] w-[30px] rotate-45 items-center justify-center border border-border-gold">
-          <span className="h-2.5 w-2.5 bg-gold" />
-        </span>
-        <span className="font-serif text-[19px] tracking-[0.06em] text-cream-text">
-          Connecting the <span className="text-gold">Dots</span>
-        </span>
-      </NavLink>
+    <header lang="en" className="sticky top-0 z-40 border-b border-line bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))] backdrop-blur-[10px]">
+      <div className="mx-auto flex h-16 max-w-280 items-center gap-5">
+        <NavLink to="/" aria-label="Connecting the Dots, home" className="mr-auto flex items-center gap-2.5 whitespace-nowrap">
+          <LogoMark className="size-7 flex-none" />
+          <span className="font-lat text-[19px] tracking-[0.02em] text-text phone:text-[17px]">
+            Connecting the <em className="text-gold not-italic">Dots</em>
+          </span>
+        </NavLink>
 
-      <nav className="hidden items-center gap-7 sm:flex">
-        {NAV_LINKS.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.to === '/'}
-            className={({ isActive }) =>
-              `text-[13px] tracking-[0.14em] uppercase hover:text-gold-light ${isActive ? 'text-gold-light' : 'text-dim'}`
-            }
-          >
-            {link.label}
-          </NavLink>
-        ))}
+        <nav aria-label="Site" lang="en" className="flex gap-1 whitespace-nowrap phone:hidden">
+          {NAV_LINKS.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.to === '/'}
+              className={({ isActive }) =>
+                `relative rounded-lg px-3 py-2 font-ui text-[14.5px] font-medium hover:bg-raised hover:text-text ${
+                  isActive
+                    ? "text-text after:absolute after:bottom-[-3px] after:left-1/2 after:-ml-[3px] after:size-1.5 after:rotate-45 after:bg-gold after:content-['']"
+                    : 'text-text-2'
+                }`
+              }
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
+
         <button
           type="button"
           onClick={onOpenSearch}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border-gold bg-(--surface-2) px-3.5 py-2 text-[13px] text-dim hover:border-gold hover:text-cream-text"
+          aria-label="Search events"
+          title="Search (/)"
+          className="inline-grid size-9 flex-none cursor-pointer place-items-center rounded-full border border-line-strong text-text-2 hover:border-gold hover:text-gold"
         >
-          <span className="inline-block h-3 w-3 rounded-full border-[1.5px] border-gold" />
-          Search
+          <SearchIcon className="size-4" />
         </button>
         <ThemeToggle />
-      </nav>
-
-      <div className="flex items-center gap-3 sm:hidden">
-        <ThemeToggle />
-        <button
-          type="button"
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={menuOpen}
-          className="flex h-9.5 w-9.5 flex-none flex-col items-center justify-center gap-1.25 rounded-full border border-border-gold bg-(--surface-2)"
-        >
-          <span className={`h-px w-4 bg-cream-text transition-transform ${menuOpen ? 'translate-y-1.25 rotate-45' : ''}`} />
-          <span className={`h-px w-4 bg-cream-text transition-opacity ${menuOpen ? 'opacity-0' : 'opacity-100'}`} />
-          <span className={`h-px w-4 bg-cream-text transition-transform ${menuOpen ? '-translate-y-1.25 -rotate-45' : ''}`} />
-        </button>
       </div>
-
-      <MobileNav links={NAV_LINKS} isOpen={menuOpen} onClose={() => setMenuOpen(false)} onOpenSearch={onOpenSearch} />
     </header>
   );
 }

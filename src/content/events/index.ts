@@ -10,6 +10,8 @@ import creationOfJinnAndShaitan from './006-creation-of-jinn-and-shaitan.md?raw'
 import creationOfAdam from './007-creation-of-adam.md?raw';
 import habilAndQabil from './008-habil-and-qabil.md?raw';
 import storyOfIdris from './009-story-of-idris.md?raw';
+import nuhFirstMessenger from './010-nuh-first-messenger.md?raw';
+import nuhTheGreatFlood from './011-nuh-the-great-flood.md?raw';
 
 /**
  * The content map. To add a new event to the timeline:
@@ -31,6 +33,8 @@ const rawEventFiles: Record<number, string> = {
   7: creationOfAdam,
   8: habilAndQabil,
   9: storyOfIdris,
+  10: nuhFirstMessenger,
+  11: nuhTheGreatFlood,
 };
 
 export const events: TimelineEvent[] = Object.values(rawEventFiles)

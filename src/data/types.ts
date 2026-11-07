@@ -1,21 +1,20 @@
+export type EraId = 'cosmos' | 'prophets' | 'jahiliyya' | 'seerah' | 'rashidun' | 'umayyad' | 'abbasid' | 'later';
+
 export interface Era {
-  id: string;
+  id: EraId;
   bn: string;
   en: string;
   short: string;
   span: string;
-  tint: string;
-  accent: string;
-  glyph: string;
 }
 
 export interface TimelineEvent {
   id: number;
-  era: string;
+  era: EraId;
   year: string;
   title: string;
   titleEn: string;
-  /** whether the card renders above the axis (alternating layout) */
+  /** currently unused by the layout (the timeline alternates by `id % 2`); kept for frontmatter compatibility */
   up: boolean;
   thumb: string;
   body: string;
@@ -25,26 +24,37 @@ export interface TimelineEvent {
   source?: string;
 }
 
-export interface LineageBranch {
-  bn: string;
-  en: string;
-  note: string;
-}
-
-export interface LineageNode {
-  bn: string;
-  en: string;
-  /** literal Tailwind text-size class, e.g. 'text-2xl' */
-  sizeClass: string;
-  /** literal Tailwind bg-[...] class for the pill's diamond dot */
-  dotClass: string;
-  /** literal Tailwind border-[...] class for the pill's ring */
-  borderClass: string;
-  connector?: boolean;
-  hasBranch?: boolean;
-  branches?: LineageBranch[];
-}
-
-export type CategoryKey = 'All' | 'Prophets' | 'Revelation' | 'Battles' | 'Caliphates' | 'Science';
+export type CategoryKey = 'All' | 'Creation' | 'Prophets' | 'Revelation' | 'Caliphates';
 
 export type ViewMode = 'timeline' | 'list';
+
+/** Lineage tree (src/data/lineage.ts). kind: u = ulul azm rasul, p = prophet, n = person (not a prophet). */
+export type LineageKind = 'u' | 'p' | 'n';
+/** How a link to the parent is known: q = Qur'an / sahih hadith, h = historians' accounts, g = generations skipped or disputed. */
+export type LineageLink = 'q' | 'h' | 'g';
+
+export interface LineageNode {
+  id: string;
+  /** Bangla name as shown on the tree */
+  bn: string;
+  /** Arabic name, shown only in the details panel */
+  ar?: string;
+  kind: LineageKind;
+  /** position on the LINEAGE_W × LINEAGE_H canvas */
+  x: number;
+  y: number;
+  /** label side relative to the dot; default 'b' (below) */
+  label?: 'b' | 't' | 'l' | 'r';
+  parent?: string;
+  link?: LineageLink;
+  /** scripture revealed to this prophet (Bangla) */
+  book?: string;
+  /** who the prophet was sent to, with the Qur'an reference (Bangla) */
+  sent?: string;
+  /** ids of events (articles) about this person */
+  events?: number[];
+  note?: string;
+  source?: string;
+  /** lineage not known (no parent link, shows a "?") */
+  unknown?: boolean;
+}

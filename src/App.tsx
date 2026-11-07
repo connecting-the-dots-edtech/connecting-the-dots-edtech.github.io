@@ -6,6 +6,7 @@ import { TimelinePage } from './pages/TimelinePage';
 import { ErasPage } from './pages/ErasPage';
 import { LineagePage } from './pages/LineagePage';
 import { Footer } from './components/Footer';
+import { TabBar } from './components/TabBar';
 import { SearchOverlay } from './components/SearchOverlay';
 import { EventModal } from './components/EventModal';
 import { TimelineAppProvider, useTimelineApp } from './state/TimelineAppContext';
@@ -14,7 +15,8 @@ import { ThemeProvider } from './state/ThemeContext';
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
-    window.scrollTo(0, 0);
+    // instant: html has scroll-behavior: smooth, which would animate the jump
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [pathname]);
   return null;
 }
@@ -22,7 +24,7 @@ function ScrollToTop() {
 function Layout() {
   const { openSearch } = useTimelineApp();
   return (
-    <div className="relative min-h-screen bg-ink">
+    <div className="min-h-screen bg-bg phone:pb-[72px]">
       <ScrollToTop />
       <Header onOpenSearch={openSearch} />
       <Routes>
@@ -32,6 +34,7 @@ function Layout() {
         <Route path="/lineage" element={<LineagePage />} />
       </Routes>
       <Footer />
+      <TabBar />
       <SearchOverlay />
       <EventModal />
     </div>

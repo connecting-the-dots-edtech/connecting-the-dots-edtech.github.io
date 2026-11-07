@@ -4,14 +4,15 @@ import type { ReactNode } from 'react';
 export type Theme = 'dark' | 'light';
 
 const STORAGE_KEY = 'theme';
-const THEME_COLOR: Record<Theme, string> = { dark: '#08090F', light: '#FAF6EE' };
+const THEME_COLOR: Record<Theme, string> = { dark: '#0E1019', light: '#F6F1E6' };
 
 function readInitialTheme(): Theme {
-  // index.html sets data-theme on <html> before React loads (see the inline
-  // script there) specifically so this reads the already-correct value
-  // instead of flashing dark, then re-rendering light, on every load.
+  // index.html sets data-theme on <html> before React loads (saved choice,
+  // else OS preference), so this reads the already-correct value. The
+  // matchMedia fallback only covers that script having failed.
   const attr = document.documentElement.dataset.theme;
-  return attr === 'light' ? 'light' : 'dark';
+  if (attr === 'light' || attr === 'dark') return attr;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 interface ThemeContextValue {
@@ -26,13 +27,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(STORAGE_KEY, theme);
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme]);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
-  }, []);
+    const next: Theme = theme === 'dark' ? 'light' : 'dark';
+    // Only an explicit toggle is remembered; otherwise the OS preference rules.
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      // storage unavailable (private mode etc.) — the choice just isn't remembered
+    }
+    setTheme(next);
+  }, [theme]);
 
   return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
 }

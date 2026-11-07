@@ -1,178 +1,104 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 
-interface Geometry {
-  width: number;
-  height: number;
-  d: string;
-}
+/** Fraction of the remaining distance closed per 60fps frame; scaled by elapsed time. */
+const CATCH_UP = 0.03;
+const FRAME_MS = 1000 / 60;
 
-const EMPTY_GEOMETRY: Geometry = { width: 0, height: 0, d: '' };
-
-const BULGE_PX = 170;
-const CATCH_UP_RATE = 0.02;
-const VISIBILITY_THRESHOLD = 0.15;
+const clamp = (v: number, max: number) => Math.max(0, Math.min(max, v));
 
 /**
- * Draws a wavy connector through a set of DOM nodes (measured, not laid out
- * by this hook) and reveals it as a scroll-linked stroke that deliberately
- * lags behind the scroll position instead of tracking it 1:1 — so the line
- * is visibly still "catching up" for a moment after the user stops
- * scrolling, rather than snapping into place on every scroll event. The
- * line stays fully retracted until its container actually scrolls into
- * view, then grows from the very first node up to whatever's currently on
- * screen as an entrance animation — the same easing that drives ongoing
- * scroll tracking afterward, just starting from zero instead of a target.
+ * The timeline curve's draw-in (spec §5.3): the curve starts hidden, grows
+ * from the first dot on load, then keeps growing toward the edge of the
+ * visible area, easing behind the scroll so it visibly catches up.
  *
- * Like useParallax/useDragScroll, the per-frame stroke-dasharray/dashoffset
- * values are continuous and runtime-only, so they're mutated imperatively
- * on the path ref rather than passed through React state as a style prop.
+ * The reveal is a clip rect (CurveSvg's `clipRectRef`) whose width
+ * (horizontal) or height (vertical) is the progress `cur`. That is a
+ * continuous runtime value, so it is written imperatively with
+ * `setAttribute` from a rAF loop rather than through React state.
  */
 export function useConnectingLine(
-  containerRef: RefObject<HTMLElement | null>,
-  scrollRef: RefObject<HTMLElement | null>,
-  nodeIds: number[],
-) {
-  const nodesRef = useRef<Map<number, HTMLElement>>(new Map());
-  const pathRef = useRef<SVGPathElement>(null);
-  const [geometry, setGeometry] = useState<Geometry>(EMPTY_GEOMETRY);
-
-  // Persists across zoom/resize-triggered recomputes so only the very first
-  // paint starts the line at zero — a later resize continues from wherever
-  // the line had already caught up to, instead of resetting.
-  const currentRef = useRef(0);
-  const initializedRef = useRef(false);
-
-  const registerNode = useCallback((id: number, el: HTMLElement | null) => {
-    if (el) nodesRef.current.set(id, el);
-    else nodesRef.current.delete(id);
-  }, []);
-
-  const recompute = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const containerBox = container.getBoundingClientRect();
-
-    const points = nodeIds
-      .map((id) => nodesRef.current.get(id))
-      .filter((el): el is HTMLElement => Boolean(el))
-      .map((el) => {
-        const box = el.getBoundingClientRect();
-        return {
-          x: box.left + box.width / 2 - containerBox.left,
-          y: box.top + box.height / 2 - containerBox.top,
-        };
-      })
-      .sort((a, b) => a.x - b.x);
-
-    if (points.length < 2) {
-      setGeometry({ width: containerBox.width, height: containerBox.height, d: '' });
-      return;
-    }
-
-    // A clean, continuous sine-like wave: every segment bulges the same
-    // amount, alternating up/down by position, so the curve reads as one
-    // smooth cosine rather than a sequence of unevenly-shaped bends. The
-    // card stems (TimelineView's EventColumn) are long enough on their own
-    // to keep the cards clear of this — the curve doesn't need to dodge
-    // them itself.
-    const y = points[0].y;
-    let d = `M ${points[0].x},${y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const x0 = points[i].x;
-      const x1 = points[i + 1].x;
-      const amp = Math.min(BULGE_PX, (x1 - x0) * 0.4);
-      const sign = i % 2 === 0 ? -1 : 1;
-      const c1x = x0 + (x1 - x0) * 0.35;
-      const c2x = x0 + (x1 - x0) * 0.65;
-      const cy = y + sign * amp;
-      d += ` C ${c1x},${cy} ${c2x},${cy} ${x1},${y}`;
-    }
-    setGeometry({ width: containerBox.width, height: containerBox.height, d });
-  }, [containerRef, nodeIds]);
-
-  useLayoutEffect(() => {
-    recompute();
-  }, [recompute]);
+  trackRef: RefObject<HTMLElement | null>,
+  scrollerRef: RefObject<HTMLElement | null>,
+  vertical: boolean,
+  clipRectRef: RefObject<SVGRectElement | null>,
+  curveSize: { width: number; height: number },
+): void {
+  const cur = useRef(0);
+  const lastVertical = useRef(vertical);
+  const { width, height } = curveSize;
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const observer = new ResizeObserver(recompute);
-    observer.observe(container);
-    window.addEventListener('resize', recompute);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', recompute);
+    const track = trackRef.current;
+    if (!track) return;
+    const scroller = scrollerRef.current;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let raf = 0;
+    let last = 0;
+    let alive = true;
+
+    // Unclamped edge of the visible area, in track coordinates.
+    const edge = () => {
+      const top = track.getBoundingClientRect();
+      if (vertical) return window.innerHeight - top.top;
+      return scroller ? scroller.getBoundingClientRect().right - top.left : 0;
     };
-  }, [containerRef, recompute]);
+    const target = () => clamp(edge(), vertical ? height : width);
 
-  useEffect(() => {
-    const path = pathRef.current;
-    const scrollEl = scrollRef.current;
-    const container = containerRef.current;
-    if (!path || !geometry.d || !container) return;
+    const apply = () => {
+      const rect = clipRectRef.current;
+      if (!rect) return;
+      rect.setAttribute('width', String(vertical ? width : cur.current));
+      rect.setAttribute('height', String(vertical ? cur.current : height));
+    };
 
-    const total = path.getTotalLength();
-    path.style.strokeDasharray = `${total}`;
-    // Fully retracted until the section actually scrolls into view — so the
-    // line is never sitting there pre-connected before the visitor arrives.
-    path.style.strokeDashoffset = `${total}`;
+    const tick = (now: number) => {
+      raf = 0;
+      const dt = last ? Math.min(100, now - last) : FRAME_MS;
+      last = now;
+      const k = 1 - Math.pow(1 - CATCH_UP, dt / FRAME_MS);
+      const t = target();
+      let c = reduced.matches ? t : cur.current + (t - cur.current) * k;
+      if (Math.abs(t - c) < 0.5) c = t;
+      cur.current = c;
+      apply();
+      if (c !== t) raf = requestAnimationFrame(tick);
+      else last = 0;
+    };
+    const kick = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
 
-    function lengthAtX(targetX: number) {
-      let lo = 0;
-      let hi = total;
-      for (let i = 0; i < 24; i++) {
-        const mid = (lo + hi) / 2;
-        if (path!.getPointAtLength(mid).x < targetX) lo = mid;
-        else hi = mid;
-      }
-      return lo;
+    // On a layout flip, keep what is already drawn up to the new edge instead
+    // of restarting from 0. The edge is unclamped here because the curve size
+    // for the new layout may not have been measured yet.
+    if (lastVertical.current !== vertical) {
+      lastVertical.current = vertical;
+      cur.current = Math.max(0, Math.min(cur.current, edge()));
     }
 
-    let frame: number;
+    apply();
+    kick();
 
-    function tick() {
-      const edgeX = scrollEl
-        ? Math.min(scrollEl.scrollLeft + scrollEl.clientWidth, geometry.width)
-        : geometry.width;
-      const target = lengthAtX(edgeX);
-      currentRef.current += (target - currentRef.current) * CATCH_UP_RATE;
-      path!.style.strokeDashoffset = `${total - currentRef.current}`;
-      frame = requestAnimationFrame(tick);
-    }
+    const scrollSource: HTMLElement | Window | null = vertical ? window : scroller;
+    scrollSource?.addEventListener('scroll', kick, { passive: true });
+    window.addEventListener('resize', kick);
 
-    // Observe the scroll viewport (trackRef), not the inner content row —
-    // that row spans the entire horizontally-scrollable width (thousands of
-    // px), so IntersectionObserver's area-based ratio against its own huge
-    // bounding box would stay near zero on any normal-width viewport,
-    // worst of all on narrow mobile screens, and the threshold would
-    // effectively never be met.
-    const visibilityTarget = scrollEl ?? container;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-        // Start from nothing and let the normal per-frame easing below grow
-        // it toward the current screen's target — that's the entrance
-        // animation, no separate jump-then-catch-up needed.
-        if (!initializedRef.current) {
-          currentRef.current = 0;
-          initializedRef.current = true;
-        } else {
-          currentRef.current = Math.min(currentRef.current, total);
-        }
-        frame = requestAnimationFrame(tick);
-        observer.disconnect();
-      },
-      { threshold: VISIBILITY_THRESHOLD },
-    );
-    observer.observe(visibilityTarget);
+    // Layout can settle after mount (scrollbars, fonts) without a scroll or
+    // window resize, which would leave the clip at a stale edge.
+    const ro = new ResizeObserver(kick);
+    ro.observe(track);
+    if (scroller) ro.observe(scroller);
+    void document.fonts?.ready.then(() => {
+      if (alive) kick();
+    });
 
     return () => {
-      observer.disconnect();
-      cancelAnimationFrame(frame);
+      alive = false;
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+      scrollSource?.removeEventListener('scroll', kick);
+      window.removeEventListener('resize', kick);
     };
-  }, [geometry, scrollRef, containerRef]);
-
-  return { pathRef, geometry, registerNode };
+  }, [trackRef, scrollerRef, clipRectRef, vertical, width, height]);
 }
