@@ -1,143 +1,192 @@
-import { useMemo, useRef } from 'react';
-import { eras, events, eraById } from '../../data/timeline';
-import { eraStyles, eraWidthClasses } from '../../data/eraStyles';
-import { useTimelineApp } from '../../state/TimelineAppContext';
-import { useDragScroll } from '../../hooks/useDragScroll';
+import { useEffect, useRef, useState } from 'react';
+import { eraVar } from '../../data/eraStyles';
+import { eraNumber, eras, eventsForEra } from '../../data/timeline';
+import type { TimelineEvent } from '../../data/types';
 import { useConnectingLine } from '../../hooks/useConnectingLine';
-import type { TimelineEvent, Era } from '../../data/types';
+import { useCurve } from '../../hooks/useCurve';
+import { useDragScroll } from '../../hooks/useDragScroll';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { pad2 } from '../../lib/format';
+import { isTypingTarget } from '../../lib/keys';
+import { useTimelineApp } from '../../state/TimelineAppContext';
+import { CurveSvg } from '../ui/CurveSvg';
+import { EventCard } from '../ui/EventCard';
+import { ChevronLeftIcon, ChevronRightIcon } from '../ui/icons';
 
-function EventCard({ ev, era, side }: { ev: TimelineEvent; era: Era; side: 'up' | 'down' }) {
+/* Desktop: a 560px horizontal track, dots at 40% / 60% of the lane with the
+   card above / below. Phone (≤760px): a vertical list, the curve snakes down
+   the left side (dots alternate 14px / 36px), cards to the right of the dot. */
+const SCROLLER =
+  'scroll-smooth overflow-x-auto overflow-y-hidden border-y border-line bg-linear-180 from-[color-mix(in_srgb,var(--raised)_60%,var(--surface))] to-surface pr-[max(16px,env(safe-area-inset-right,0px))] pl-[max(16px,env(safe-area-inset-left,0px))] [scrollbar-width:thin] phone:overflow-visible phone:border-0 phone:bg-none phone:bg-transparent';
+
+const CAP = 'absolute top-1/2 z-3 -mt-1.5 size-3 rounded-full border-2 border-gold bg-surface phone:hidden';
+
+const NODE_BASE =
+  'absolute left-1/2 z-3 -mt-2.5 -ml-2.5 size-5 rounded-full border-3 border-surface bg-e shadow-[0_0_0_2px_var(--e),0_0_18px_color-mix(in_srgb,var(--e)_55%,transparent)] transition-transform duration-150 group-hover:scale-[1.2] hover:scale-[1.2] phone:static phone:m-0 phone:flex-none';
+const NODE_UP = 'top-[40%] phone:ml-3.5';
+const NODE_DOWN = 'top-[60%] phone:ml-9';
+
+const CARD_BASE = 'absolute left-1/2 z-2 -ml-[130px] phone:static phone:my-1.5 phone:mr-3.5 phone:min-w-0 phone:flex-1';
+const CARD_UP = 'bottom-[calc(60%+30px)] phone:ml-8';
+const CARD_DOWN = 'top-[calc(60%+30px)] phone:ml-2.5';
+
+const STEM_BASE = 'absolute left-1/2 z-2 -ml-px h-[21px] w-0.5 bg-e phone:hidden';
+const STEM_UP = 'top-[calc(40%-30px)]';
+const STEM_DOWN = 'top-[calc(60%+9px)]';
+
+const ARROW =
+  'absolute top-1/2 z-6 -mt-[22px] grid size-11 place-items-center rounded-full border border-line-strong bg-surface text-text shadow-(--shadow) hover:border-gold hover:text-gold disabled:pointer-events-none disabled:opacity-0 phone:hidden';
+
+function EventColumn({ ev }: { ev: TimelineEvent }) {
   const { openQuickLook } = useTimelineApp();
-  const style = eraStyles[era.id];
-  return (
-    <button
-      type="button"
-      onClick={() => openQuickLook(ev)}
-      className={`flex w-full cursor-pointer items-center justify-center rounded-2xl border border-(--card-border) bg-card px-5 py-4.5 text-center shadow-(--card-shadow) ${
-        side === 'up' ? style.accentBorderTop3 : style.accentBorderBottom3
-      }`}
-    >
-      <span className="font-bn text-[19px] leading-[1.4] font-semibold text-gold-pale">{ev.title}</span>
-    </button>
-  );
-}
-
-function EventColumn({
-  ev,
-  era,
-  onNodeRef,
-}: {
-  ev: TimelineEvent;
-  era: Era;
-  onNodeRef: (id: number, el: HTMLElement | null) => void;
-}) {
-  const { openQuickLook } = useTimelineApp();
-  const style = eraStyles[era.id];
-  const side = ev.up ? 'up' : 'down';
+  const up = ev.id % 2 === 1;
 
   return (
-    <div className="flex w-64 flex-none flex-col items-center">
-      <div className="flex w-full flex-[1.16] flex-col items-center justify-end">
-        {side === 'up' && (
-          <>
-            <EventCard ev={ev} era={era} side="up" />
-            <span className={`h-32.5 w-0.5 ${style.stemDown}`} />
-          </>
-        )}
-      </div>
-
+    <div className="group relative w-[150px] flex-none phone:flex phone:w-auto phone:items-center">
       <button
-        ref={(el) => onNodeRef(ev.id, el)}
         type="button"
+        data-curve-pt=""
+        aria-label={ev.title}
         onClick={() => openQuickLook(ev)}
-        aria-label={ev.titleEn}
-        className={`h-4.5 w-4.5 flex-none animate-pulse-ring rounded-full border-[3px] bg-ink-alt p-0 shadow-[0_0_0_6px_rgba(8,9,15,0.92),0_0_16px_rgba(201,162,90,0.5)] ${style.accentBorder}`}
+        className={NODE_BASE + ' ' + (up ? NODE_UP : NODE_DOWN)}
       />
-
-      <div className="flex w-full flex-1 flex-col items-center justify-start">
-        {side === 'down' && (
-          <>
-            <span className={`h-32.5 w-0.5 ${style.stemUp}`} />
-            <EventCard ev={ev} era={era} side="down" />
-          </>
-        )}
-      </div>
+      <span aria-hidden="true" className={STEM_BASE + ' ' + (up ? STEM_UP : STEM_DOWN)} />
+      <EventCard ev={ev} variant="timeline" className={CARD_BASE + ' ' + (up ? CARD_UP : CARD_DOWN)} />
     </div>
   );
 }
 
+/** The horizontal timeline track with the gold cosine curve, arrows, drag and ←/→ keys. */
 export function TimelineView() {
-  const { trackRef, zoom } = useTimelineApp();
+  const { trackRef, quickLookEvent, searchOpen } = useTimelineApp();
+  const trackElRef = useRef<HTMLDivElement>(null);
+  const clipRectRef = useRef<SVGRectElement>(null);
+
+  const vertical = useMediaQuery('(max-width: 760px)');
+  const curve = useCurve(trackElRef, vertical);
+  useConnectingLine(trackElRef, trackRef, vertical, clipRectRef, curve);
   useDragScroll(trackRef);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const nodeIds = useMemo(() => events.map((ev) => ev.id), []);
-  const { pathRef, geometry, registerNode } = useConnectingLine(containerRef, trackRef, nodeIds);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+
+  useEffect(() => {
+    const sc = trackRef.current;
+    if (!sc) return;
+    let start: boolean | null = null;
+    let end: boolean | null = null;
+    const update = () => {
+      const s = sc.scrollLeft < 8;
+      const e = sc.scrollLeft + sc.clientWidth > sc.scrollWidth - 8;
+      if (s !== start) setAtStart((start = s));
+      if (e !== end) setAtEnd((end = e));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(sc);
+    if (trackElRef.current) ro.observe(trackElRef.current);
+    sc.addEventListener('scroll', update, { passive: true });
+    return () => {
+      ro.disconnect();
+      sc.removeEventListener('scroll', update);
+    };
+  }, [trackRef]);
+
+  useEffect(() => {
+    if (quickLookEvent !== null || searchOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (isTypingTarget(document.activeElement)) return;
+      const sc = trackRef.current;
+      if (!sc) return;
+      e.preventDefault();
+      sc.scrollBy({ left: e.key === 'ArrowLeft' ? -300 : 300 });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [quickLookEvent, searchOpen, trackRef]);
+
+  const scrollPage = (dir: 1 | -1) => {
+    const sc = trackRef.current;
+    if (sc) sc.scrollBy({ left: dir * sc.clientWidth * 0.8 });
+  };
 
   return (
-    <div className="mt-8.5">
-      <div ref={trackRef} className="scrollbar-thin overflow-x-auto overflow-y-hidden px-5 sm:px-10">
-        <div ref={containerRef} className="relative flex h-180 min-w-min">
-          {geometry.d && (
-            <svg
-              className="pointer-events-none absolute inset-0 z-1"
-              width={geometry.width}
-              height={geometry.height}
-              viewBox={`0 0 ${geometry.width} ${geometry.height}`}
-            >
-              <path
-                ref={pathRef}
-                d={geometry.d}
-                fill="none"
-                strokeWidth={2}
-                strokeLinecap="round"
-                className="stroke-gold drop-shadow-[0_0_6px_rgba(201,162,90,0.5)]"
-              />
-            </svg>
-          )}
-          <div className="absolute top-[54%] left-0 z-1 -translate-y-1/2">
-            <span className="block h-2.25 w-2.25 rounded-full border-2 border-gold" />
-          </div>
-          <div className="absolute top-[54%] right-1.5 z-5 -translate-y-1/2 text-[15px] leading-none text-gold">▶</div>
+    <div className="relative mt-[22px] phone:mt-[18px]">
+      <button
+        type="button"
+        lang="en"
+        aria-label="Earlier events"
+        disabled={atStart}
+        onClick={() => scrollPage(-1)}
+        className={ARROW + ' left-3'}
+      >
+        <ChevronLeftIcon className="size-[18px]" />
+      </button>
+
+      <div id="tl-scroller" ref={trackRef} className={SCROLLER}>
+        <div
+          id="tl-track"
+          ref={trackElRef}
+          className="relative flex h-[560px] min-w-max phone:h-auto phone:min-w-0 phone:flex-col"
+        >
+          <CurveSvg
+            width={curve.width}
+            height={curve.height}
+            segments={curve.segments}
+            clipPathId="tl-clip"
+            clipRectRef={clipRectRef}
+          />
+          <span data-curve-pt="" className={CAP + ' left-[18px] -ml-1.5'} />
 
           {eras.map((era) => {
-            const eraEvents = events.filter((ev) => ev.era === era.id);
-            const style = eraStyles[era.id];
-            const widthClass = eraWidthClasses[era.id][zoom];
+            const evs = eventsForEra(era.id);
             return (
-              <div
+              <section
                 key={era.id}
                 data-era={era.id}
-                className={`relative overflow-hidden border-r border-dashed border-[rgba(201,162,90,0.24)] ${style.tintBg} ${widthClass}`}
+                className={
+                  'flex flex-none flex-col border-r border-line phone:mb-3.5 phone:rounded-[12px] phone:border ' +
+                  eraVar[era.id]
+                }
               >
-                <div className="absolute inset-x-0 top-0 z-3 flex items-center gap-3 border-b border-border bg-linear-to-b from-ink/62 to-transparent px-5.5 py-3.75 pb-3.5">
-                  <span className={`text-[22px] leading-none ${style.accentText}`}>{era.glyph}</span>
-                  <div className="min-w-0">
-                    <div className="overflow-hidden font-bn text-lg leading-[1.15] text-ellipsis whitespace-nowrap text-cream">
-                      {era.bn}
-                    </div>
-                    <div className={`mt-0.75 text-[10px] tracking-[0.18em] whitespace-nowrap uppercase ${style.accentText}`}>
-                      {era.en}
-                    </div>
+                <div className="sticky left-0 grid w-max max-w-full gap-px px-[22px] pt-3.5 phone:static phone:pt-3.5 phone:pr-4 phone:pb-1 phone:pl-16">
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="font-bn-display text-[16px] text-e">{pad2(eraNumber(era.id))}</span>
+                    <span className="font-bn-display text-[21px] leading-[1.35] text-text">{era.bn}</span>
                   </div>
+                  <div className="font-bn text-[14px] text-muted">{era.span}</div>
                 </div>
 
-                <div
-                  className={`absolute top-[calc(54%+18px)] left-1.5 z-4 rounded-full border border-border-gold bg-ink/55 px-2.25 py-0.5 font-serif text-[11px] whitespace-nowrap ${style.accentText}`}
-                >
-                  {era.span}
-                </div>
-
-                <div className="absolute inset-0 z-2 flex items-stretch justify-around px-5.5">
-                  {eraEvents.map((ev) => (
-                    <EventColumn key={ev.id} ev={ev} era={eraById[ev.era]} onNodeRef={registerNode} />
-                  ))}
-                </div>
-              </div>
+                {evs.length > 0 ? (
+                  <div className="relative flex flex-1 px-16 phone:flex-col phone:px-0 phone:pt-1 phone:pb-3">
+                    {evs.map((ev) => (
+                      <EventColumn key={ev.id} ev={ev} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="relative w-[200px] flex-1 phone:min-h-[52px] phone:w-auto">
+                    <span data-curve-pt="" data-soon="" className="absolute top-1/2 left-1/2 -mt-1 -ml-1 size-2 phone:left-[34px]" />
+                  </div>
+                )}
+              </section>
             );
           })}
+
+          <span data-curve-pt="" data-soon="" className={CAP + ' right-3'} />
         </div>
       </div>
+
+      <button
+        type="button"
+        lang="en"
+        aria-label="Later events"
+        disabled={atEnd}
+        onClick={() => scrollPage(1)}
+        className={ARROW + ' right-3'}
+      >
+        <ChevronRightIcon className="size-[18px]" />
+      </button>
     </div>
   );
 }

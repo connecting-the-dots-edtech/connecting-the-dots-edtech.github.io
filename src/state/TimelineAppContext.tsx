@@ -9,18 +9,9 @@ function matchesQuery(ev: TimelineEvent, q: string): boolean {
   return !q || (ev.title + ' ' + ev.titleEn + ' ' + ev.body).toLowerCase().includes(q);
 }
 
-const ZOOM_SCALES = [0.7, 1, 1.5, 2.2];
-const ZOOM_NAMES = ['Eras', 'Decades', 'Years', 'Detail'];
-
 interface TimelineAppValue {
   view: ViewMode;
   setView: (v: ViewMode) => void;
-
-  zoom: number;
-  zoomScale: number;
-  zoomLabel: string;
-  zoomIn: () => void;
-  zoomOut: () => void;
 
   trackRef: RefObject<HTMLDivElement | null>;
   scrollToEra: (eraId: EraId) => void;
@@ -50,7 +41,6 @@ const TimelineAppContext = createContext<TimelineAppValue | null>(null);
 
 export function TimelineAppProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<ViewMode>('timeline');
-  const [zoom, setZoom] = useState(1);
   const [selectedEra, setSelectedEra] = useState<EraId>('cosmos');
   const [quickLookEvent, setQuickLookEvent] = useState<TimelineEvent | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -59,9 +49,6 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
 
   const trackRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
-
-  const zoomIn = useCallback(() => setZoom((z) => Math.min(ZOOM_SCALES.length - 1, z + 1)), []);
-  const zoomOut = useCallback(() => setZoom((z) => Math.max(0, z - 1)), []);
 
   const scrollToEra = useCallback(
     (eraId: EraId) => {
@@ -106,11 +93,6 @@ export function TimelineAppProvider({ children }: { children: ReactNode }) {
   const value: TimelineAppValue = {
     view,
     setView,
-    zoom,
-    zoomScale: ZOOM_SCALES[zoom],
-    zoomLabel: ZOOM_NAMES[zoom],
-    zoomIn,
-    zoomOut,
     trackRef,
     scrollToEra,
     selectedEra,

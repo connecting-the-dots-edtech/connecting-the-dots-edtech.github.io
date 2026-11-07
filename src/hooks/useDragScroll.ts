@@ -2,10 +2,15 @@ import { useEffect } from 'react';
 import type { RefObject } from 'react';
 
 /**
- * Click-and-drag horizontal scrolling for the timeline track. Suppresses the
- * click event that follows a drag so event cards underneath the pointer
- * don't fire onClick when the user was just panning. Takes an external ref
- * so the same DOM node can also be targeted by scrollToEra().
+ * Click-and-drag horizontal scrolling for the timeline track, mouse only
+ * (touch keeps native scrolling). Suppresses the click that follows a drag of
+ * more than 4px so the card under the pointer doesn't open when the user was
+ * just panning. Takes an external ref so the same DOM node can also be
+ * targeted by scrollToEra().
+ *
+ * The cursor and `scroll-behavior` are set imperatively on the ref: while
+ * dragging, the scroller's CSS `scroll-smooth` must be off or every
+ * `scrollLeft` write would animate and lag the pointer.
  */
 export function useDragScroll<T extends HTMLElement>(ref: RefObject<T | null>) {
   useEffect(() => {
@@ -18,11 +23,12 @@ export function useDragScroll<T extends HTMLElement>(ref: RefObject<T | null>) {
     let startLeft = 0;
 
     const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== undefined && e.button !== 0) return;
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
       dragging = true;
       moved = false;
       startX = e.clientX;
       startLeft = el.scrollLeft;
+      el.style.scrollBehavior = 'auto';
       el.style.cursor = 'grabbing';
     };
     const onPointerMove = (e: PointerEvent) => {
@@ -32,7 +38,9 @@ export function useDragScroll<T extends HTMLElement>(ref: RefObject<T | null>) {
       el.scrollLeft = startLeft - dx;
     };
     const endDrag = () => {
+      if (!dragging) return;
       dragging = false;
+      el.style.scrollBehavior = '';
       el.style.cursor = 'grab';
     };
     const onClickCapture = (e: MouseEvent) => {
@@ -47,13 +55,17 @@ export function useDragScroll<T extends HTMLElement>(ref: RefObject<T | null>) {
     el.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
     el.addEventListener('click', onClickCapture, true);
 
     return () => {
       el.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', endDrag);
+      window.removeEventListener('pointercancel', endDrag);
       el.removeEventListener('click', onClickCapture, true);
+      el.style.scrollBehavior = '';
+      el.style.cursor = '';
     };
   }, [ref]);
 }
