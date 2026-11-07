@@ -26,3 +26,6 @@ src/content-drafts/
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright MCP scratch output
+.playwright-mcp/

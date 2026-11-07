@@ -1,6 +1,78 @@
 @import 'tailwindcss';
 
 /*
+ * Redesign tokens (Task 1). Light is the :root default; dark applies via the
+ * OS preference unless the visitor forced light, or via data-theme="dark".
+ * index.html always sets data-theme before first paint, so the media block is
+ * a no-JS fallback. --star (starfield opacity) is deliberately omitted.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-muted: var(--muted);
+  --color-gold: var(--gold);
+  --color-gold-fill: var(--gold-fill);
+  --color-on-gold: var(--on-gold);
+  --color-gold-2: var(--gold-2);
+  --color-e: var(--e);
+
+  --font-bn-display: 'Tiro Bangla', 'Noto Serif Bengali', serif;
+  --font-bn: 'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif;
+  --font-ui: 'Hanken Grotesk', 'Hind Siliguri', system-ui, sans-serif;
+  --font-lat: 'Marcellus', 'Iowan Old Style', Georgia, serif;
+  --font-ar: 'Amiri', 'Traditional Arabic', serif;
+
+  --animate-travel: travel 2.8s ease-in-out infinite;
+  --animate-swap-in: swapIn 0.35s ease-out;
+}
+
+@custom-variant phone (@media (max-width: 760px));
+@custom-variant tablet (@media (max-width: 960px));
+
+:root {
+  --bg: #F6F1E6; --surface: #FFFCF5; --raised: #EFE8D8;
+  --line: rgba(60, 45, 20, 0.14); --line-strong: rgba(60, 45, 20, 0.28);
+  --text: #1E1A14; --text-2: #463F31; --muted: #6A604C;
+  --gold: #7F5B12; --gold-fill: #CFA04A; --on-gold: #1E1A14; --gold-2: #B08328; --glow: rgba(207, 160, 74, 0.16);
+  --shadow: 0 1px 2px rgba(40, 30, 10, 0.06), 0 10px 28px rgba(40, 30, 10, 0.08);
+  --scrim: rgba(30, 24, 12, 0.35);
+  --e-cosmos: #3A52A6; --e-prophets: #64479E; --e-jahiliyya: #8A5E2C; --e-seerah: #1C7A4E;
+  --e-rashidun: #A8452A; --e-umayyad: #9A3A6A; --e-abbasid: #5C6A14; --e-later: #0E6A84;
+  --e: var(--gold);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1019; --surface: #151826; --raised: #1D2133;
+    --line: rgba(237, 230, 214, 0.10); --line-strong: rgba(237, 230, 214, 0.22);
+    --text: #EDE6D6; --text-2: #C3BCAD; --muted: #9A9486;
+    --gold: #D9B46A; --gold-fill: #D2A852; --on-gold: #15120B; --gold-2: #F2D492; --glow: rgba(210, 168, 82, 0.13);
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px rgba(0, 0, 0, 0.45);
+    --scrim: rgba(4, 5, 10, 0.6);
+    --e-cosmos: #93A8EC; --e-prophets: #B9A2EC; --e-jahiliyya: #D8B48A; --e-seerah: #72C69C;
+    --e-rashidun: #E0876A; --e-umayyad: #DA8FB0; --e-abbasid: #B8C46E; --e-later: #52BCD6;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0E1019; --surface: #151826; --raised: #1D2133;
+  --line: rgba(237, 230, 214, 0.10); --line-strong: rgba(237, 230, 214, 0.22);
+  --text: #EDE6D6; --text-2: #C3BCAD; --muted: #9A9486;
+  --gold: #D9B46A; --gold-fill: #D2A852; --on-gold: #15120B; --gold-2: #F2D492; --glow: rgba(210, 168, 82, 0.13);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 14px 34px rgba(0, 0, 0, 0.45);
+  --scrim: rgba(4, 5, 10, 0.6);
+  --e-cosmos: #93A8EC; --e-prophets: #B9A2EC; --e-jahiliyya: #D8B48A; --e-seerah: #72C69C;
+  --e-rashidun: #E0876A; --e-umayyad: #DA8FB0; --e-abbasid: #B8C46E; --e-later: #52BCD6;
+  color-scheme: dark;
+}
+
+/*
  * Theme architecture: every color that needs to differ between dark and
  * light mode is a CSS custom property, never a literal hex baked into a
  * component. `@theme` registers the ones Tailwind should also expose as
@@ -9,6 +81,7 @@
  * `[var(--x)]` syntax. `:root[data-theme="light"]` overrides both sets in
  * one place — components never know which theme is active.
  */
+/* legacy — removed in Task 11 */
 @theme {
   --color-ink: #08090f;
   --color-ink-alt: #0b0d15;
@@ -23,11 +96,7 @@
   --color-quiet: #7e786b;
   --color-ghost: #6e6858;
 
-  /* text/icon/border accent — darkens in light mode for contrast */
-  --color-gold: #c9a25a;
   --color-gold-light: #e4c078;
-  /* button/pill fills paired with dark text on top — stays bright in both themes */
-  --color-gold-fill: #c9a25a;
   --color-gold-pale: #f5efe0;
   --color-cream: #f3ecdb;
   --color-teal: #5fa8a0;
@@ -38,7 +107,6 @@
 
   --font-serif: 'Marcellus', serif;
   --font-sans: 'Hanken Grotesk', system-ui, sans-serif;
-  --font-bn: 'Noto Serif Bengali', serif;
   --font-ar: 'Amiri', serif;
 
   --animate-twinkle: twinkle 3s ease-in-out infinite;
@@ -50,6 +118,7 @@
   --animate-pulse-ring: pulseRing 3.5s ease-out infinite;
 }
 
+/* legacy — removed in Task 11 */
 :root {
   color-scheme: dark;
 
@@ -90,6 +159,7 @@
   --era-later-accent: #93d2c6;
 }
 
+/* legacy — removed in Task 11 */
 :root[data-theme='light'] {
   color-scheme: light;
 
@@ -109,7 +179,6 @@
   --color-quiet: #9a917a;
   --color-ghost: #aea48d;
 
-  --color-gold: #96701e;
   --color-gold-light: #b4863a;
   --color-gold-pale: #201b12;
   --color-cream: #1b170f;
@@ -167,6 +236,16 @@
   0%, 100% { opacity: 0.15; }
   50% { opacity: 0.9; }
 }
+@keyframes travel {
+  0% { top: 0; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+@keyframes swapIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
 @keyframes floatY {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
@@ -187,24 +266,29 @@
 
 html {
   scroll-behavior: smooth;
+  font-synthesis-style: none;
 }
 
 body {
   margin: 0;
-  background: var(--color-ink);
-  color: var(--color-cream-text);
-  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 @layer base {
   a {
-    color: var(--color-gold);
-  }
-  a:hover {
-    color: var(--color-gold-light);
+    color: var(--gold);
   }
 }
 
@@ -225,10 +309,10 @@ body {
   width: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-ink-alt-2);
+  background: var(--bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2d3a;
+  background: var(--line-strong);
   border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
